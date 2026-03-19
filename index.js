@@ -98,7 +98,6 @@ Rules:
   // Secondary LLM
   useSecondaryLLM: false,
   secondaryLLMAPI: "sillytavern",
-  secondaryLLMProfile: "", // Connection profile name (empty = current)
   secondaryLLMModel: "",
   secondaryLLMEndpoint: "",
   secondaryLLMAPIKey: "",
@@ -364,62 +363,6 @@ globalThis.stTrackerGenInterceptor = async function (
 };
 
 // ============================================================
-// CONNECTION PROFILES
-// ============================================================
-function getConnectionProfiles() {
-  try {
-    const cm = extension_settings?.connectionManager;
-    if (!cm || !cm.profiles) return [];
-    return cm.profiles;
-  } catch (e) {
-    log(`Error getting connection profiles: ${e.message}`);
-    return [];
-  }
-}
-
-function getCurrentProfileName() {
-  try {
-    const cm = extension_settings?.connectionManager;
-    if (!cm || !cm.selectedProfile || !cm.profiles) return null;
-    const profile = cm.profiles.find((p) => p.id === cm.selectedProfile);
-    return profile?.name || null;
-  } catch (e) {
-    return null;
-  }
-}
-
-async function switchToProfile(profileName) {
-  if (!profileName) return;
-  try {
-    const context = getContext();
-    // Use ST's slash command system to switch profiles
-    await context.executeSlashCommandsWithOptions(`/profile ${profileName}`);
-    log(`Switched to connection profile: ${profileName}`);
-    // Small delay for ST to apply the profile
-    await new Promise((r) => setTimeout(r, 300));
-  } catch (e) {
-    log(`Error switching profile: ${e.message}`);
-  }
-}
-
-function populateProfileDropdown() {
-  const dropdown = document.getElementById("sttSecondaryProfile");
-  if (!dropdown) return;
-
-  const profiles = getConnectionProfiles();
-  const saved = getSettings("secondaryLLMProfile");
-
-  dropdown.innerHTML = '<option value="">(Current Connection)</option>';
-  profiles.forEach((p) => {
-    const opt = document.createElement("option");
-    opt.value = p.name;
-    opt.textContent = p.name;
-    if (p.name === saved) opt.selected = true;
-    dropdown.appendChild(opt);
-  });
-}
-
-// ============================================================
 // SECONDARY LLM
 // ============================================================
 function getRequestHeaders() {
@@ -634,19 +577,6 @@ async function generateTrackerWithSecondaryLLM() {
     return null;
   }
 
-  // Switch connection profile if configured (for sillytavern provider)
-  let originalProfile = null;
-  const targetProfile = getSettings("secondaryLLMProfile");
-  if (provider === "sillytavern" && targetProfile) {
-    originalProfile = getCurrentProfileName();
-    if (originalProfile !== targetProfile) {
-      log(`Switching to profile "${targetProfile}" for secondary LLM...`);
-      await switchToProfile(targetProfile);
-    } else {
-      originalProfile = null; // No need to switch back
-    }
-  }
-
   // Get recent messages
   const recentMessages = chat
     .filter((msg) => !msg.is_system)
@@ -692,13 +622,9 @@ async function generateTrackerWithSecondaryLLM() {
 
   try {
     // Show toast so user knows what's happening
-    const profileName = targetProfile || getCurrentProfileName() || "Current";
-    const modelName = model || "(profile default)";
-    if (provider === "sillytavern") {
-      toastr.info(`Profile: ${profileName} | Model: ${modelName}`, "ST Tracker — Generating...", { timeOut: 3000 });
-    } else {
-      toastr.info(`Provider: ${PROVIDER_CONFIG[provider]?.name} | Model: ${modelName}`, "ST Tracker — Generating...", { timeOut: 3000 });
-    }
+    const providerName = PROVIDER_CONFIG[provider]?.name || provider;
+    const modelName = model || "(current model)";
+    toastr.info(`${providerName} | ${modelName}`, "ST Tracker — Generating...", { timeOut: 3000 });
 
     log("Calling secondary LLM...");
     let text = await callSecondaryLLM(prompt, provider, model, {
@@ -722,12 +648,6 @@ async function generateTrackerWithSecondaryLLM() {
     log(`Secondary LLM error: ${error.message}`);
     toastr.error(`Secondary LLM failed: ${error.message}`);
     return null;
-  } finally {
-    // Switch back to original profile
-    if (originalProfile) {
-      log(`Switching back to profile "${originalProfile}"...`);
-      await switchToProfile(originalProfile);
-    }
   }
 }
 
@@ -889,9 +809,6 @@ function populateSettingsUI() {
     }
   }
 
-  // Populate connection profiles dropdown
-  populateProfileDropdown();
-
   // Show/hide custom API fields
   toggleCustomAPIFields();
 }
@@ -899,8 +816,6 @@ function populateSettingsUI() {
 function toggleCustomAPIFields() {
   const provider = getSettings("secondaryLLMAPI");
   const customFields = document.getElementById("sttCustomAPIFields");
-  const profileRow = document.getElementById("sttProfileRow");
-  const modelRow = document.getElementById("sttModelRow");
   const modelDesc = document.getElementById("sttModelDesc");
   const modelInput = document.getElementById("sttSecondaryModel");
 
@@ -908,16 +823,11 @@ function toggleCustomAPIFields() {
     customFields.style.display = provider === "custom" ? "block" : "none";
   }
 
-  // Show profile dropdown only for SillyTavern provider
-  if (profileRow) {
-    profileRow.style.display = provider === "sillytavern" ? "flex" : "none";
-  }
-
   // Update model field label/placeholder based on provider
   if (modelDesc && modelInput) {
     if (provider === "sillytavern") {
-      modelDesc.textContent = "Optional — leave empty to use the profile's model.";
-      modelInput.placeholder = "(uses profile model)";
+      modelDesc.textContent = "Optional — leave empty to use your current model.";
+      modelInput.placeholder = "(uses current model)";
     } else {
       modelDesc.textContent = "Required — specify the model to use.";
       modelInput.placeholder = PROVIDER_CONFIG[provider]?.placeholder || "model-name";
@@ -976,14 +886,6 @@ function attachSettingsListeners() {
     }
   });
 
-  // Profile dropdown listener
-  const profileEl = document.getElementById("sttSecondaryProfile");
-  if (profileEl) {
-    profileEl.addEventListener("change", () => {
-      setSettings("secondaryLLMProfile", profileEl.value);
-    });
-  }
-
   // Test connection button
   const testBtn = document.getElementById("sttTestConnection");
   if (testBtn) {
@@ -1000,21 +902,8 @@ function attachSettingsListeners() {
 async function testSecondaryLLMConnection() {
   const provider = getSettings("secondaryLLMAPI");
   const model = getSettings("secondaryLLMModel");
-  const targetProfile = getSettings("secondaryLLMProfile");
 
   try {
-    // Switch profile if needed
-    let originalProfile = null;
-    if (provider === "sillytavern" && targetProfile) {
-      originalProfile = getCurrentProfileName();
-      if (originalProfile !== targetProfile) {
-        toastr.info(`Switching to profile: ${targetProfile}`, "ST Tracker");
-        await switchToProfile(targetProfile);
-      } else {
-        originalProfile = null;
-      }
-    }
-
     const providerName = PROVIDER_CONFIG[provider]?.name || provider;
     toastr.info(`Testing ${providerName}...`, "ST Tracker");
 
@@ -1029,11 +918,6 @@ async function testSecondaryLLMConnection() {
         endpoint: getSettings("secondaryLLMEndpoint"),
       }
     );
-
-    // Switch back
-    if (originalProfile) {
-      await switchToProfile(originalProfile);
-    }
 
     if (text) {
       toastr.success(`Connection works! Response: ${text.substring(0, 100)}`, "ST Tracker", { timeOut: 5000 });
