@@ -95,6 +95,7 @@ Rules:
 - "state" describes emotional/physical state
 - "topics" tracks current conversation topics
 - Time and weather are global (shared across all characters)
+- "accent_color" is a hex color (e.g. "#a78bfa") that matches the mood, setting, or character personality of the current RP scene. Choose a color that fits the atmosphere — warm tones for romance, cool blues for calm, reds for tension, dark purples for mystery, etc. This colors the tracker card UI
 - Always place the tracker block at the END of your response`,
 
   // Secondary LLM
@@ -225,9 +226,16 @@ function renderTrackerCard(data) {
 
   const time = data.time || "";
   const weather = data.weather || "";
+  const accentColor = data.accent_color || "";
   const characters = data.characters || [];
 
   if (characters.length === 0) return "";
+
+  // Build inline style to override accent color if the LLM provided one
+  let inlineStyle = "";
+  if (accentColor && /^#[0-9a-fA-F]{3,8}$/.test(accentColor)) {
+    inlineStyle = ` style="--stt-accent: ${accentColor}; --stt-accent-dim: ${accentColor}1f;"`;
+  }
 
   let headerHtml = "";
   if (time || weather) {
@@ -241,7 +249,7 @@ function renderTrackerCard(data) {
   const charactersHtml = characters.map(renderCharacterCard).join("");
 
   return `
-    <div class="${CONTAINER_CLASS}">
+    <div class="${CONTAINER_CLASS}"${inlineStyle}>
       ${headerHtml}
       <div class="stt-characters">
         ${charactersHtml}
@@ -821,6 +829,7 @@ function generateFormatContent() {
 {
   "time": "HH:MM:SS; MM/DD/YYYY (Day Name)",
   "weather": "[CURRENT_WEATHER]",
+  "accent_color": "[HEX_COLOR_THAT_FITS_THE_RP_MOOD_AND_SETTING]",
   "characters": [
     {
       "name": "${charName}",
