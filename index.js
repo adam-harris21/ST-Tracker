@@ -983,6 +983,66 @@ function attachSettingsListeners() {
       setSettings("secondaryLLMProfile", profileEl.value);
     });
   }
+
+  // Test connection button
+  const testBtn = document.getElementById("sttTestConnection");
+  if (testBtn) {
+    testBtn.addEventListener("click", async () => {
+      testBtn.disabled = true;
+      testBtn.textContent = "Testing...";
+      await testSecondaryLLMConnection();
+      testBtn.disabled = false;
+      testBtn.textContent = "Test";
+    });
+  }
+}
+
+async function testSecondaryLLMConnection() {
+  const provider = getSettings("secondaryLLMAPI");
+  const model = getSettings("secondaryLLMModel");
+  const targetProfile = getSettings("secondaryLLMProfile");
+
+  try {
+    // Switch profile if needed
+    let originalProfile = null;
+    if (provider === "sillytavern" && targetProfile) {
+      originalProfile = getCurrentProfileName();
+      if (originalProfile !== targetProfile) {
+        toastr.info(`Switching to profile: ${targetProfile}`, "ST Tracker");
+        await switchToProfile(targetProfile);
+      } else {
+        originalProfile = null;
+      }
+    }
+
+    const providerName = PROVIDER_CONFIG[provider]?.name || provider;
+    toastr.info(`Testing ${providerName}...`, "ST Tracker");
+
+    const text = await callSecondaryLLM(
+      'Respond with exactly: {"test": "ok"}',
+      provider,
+      model,
+      {
+        temperature: 0,
+        streaming: getSettings("secondaryLLMStreaming") !== false,
+        apiKey: getSettings("secondaryLLMAPIKey"),
+        endpoint: getSettings("secondaryLLMEndpoint"),
+      }
+    );
+
+    // Switch back
+    if (originalProfile) {
+      await switchToProfile(originalProfile);
+    }
+
+    if (text) {
+      toastr.success(`Connection works! Response: ${text.substring(0, 100)}`, "ST Tracker", { timeOut: 5000 });
+    } else {
+      toastr.warning("Connected but got empty response.", "ST Tracker");
+    }
+  } catch (error) {
+    toastr.error(`Connection failed: ${error.message}`, "ST Tracker", { timeOut: 8000 });
+  }
 }
 
 function getExtensionDir() {

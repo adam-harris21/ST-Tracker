@@ -100,7 +100,7 @@
           <div class="stt-setting-row">
             <div class="stt-setting-info">
               <label class="stt-setting-label" for="sttUseSecondaryLLM">Enable Secondary LLM</label>
-              <p class="stt-setting-desc">Generate tracker data using a separate LLM call when the AI doesn't include one.</p>
+              <p class="stt-setting-desc">Uses a separate, cheaper model to generate tracker cards — so your RP model doesn't waste tokens on tracker data. Remove <code>{{stt_tracker}}</code> from your prompt when using this.</p>
             </div>
             <div class="stt-setting-control">
               <label class="stt-toggle">
@@ -203,6 +203,17 @@
                 <input type="checkbox" id="sttSecondaryStreaming">
                 <span class="stt-slider"></span>
               </label>
+            </div>
+          </div>
+
+          <!-- Test Connection -->
+          <div class="stt-setting-row" style="border-top: 1px solid rgba(255,255,255,0.08); padding-top: 16px; margin-top: 4px;">
+            <div class="stt-setting-info">
+              <label class="stt-setting-label">Test Connection</label>
+              <p class="stt-setting-desc">Send a test message to verify the secondary LLM works.</p>
+            </div>
+            <div class="stt-setting-control">
+              <button id="sttTestConnection" class="stt-btn-test">Test</button>
             </div>
           </div>
         </div>
