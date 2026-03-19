@@ -16,6 +16,7 @@ const CONTAINER_CLASS = "stt-card-container";
 const CODE_BLOCK_ID = "tracker"; // default identifier
 
 const log = (msg) => console.log(`[STT] ${msg}`);
+const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 // Secret keys for SillyTavern's secrets system
 const SECRET_KEYS = {
@@ -274,11 +275,11 @@ function parseTrackerFromMessage(messageText) {
   if (!messageText) return null;
 
   const identifier = getSettings("codeBlockIdentifier");
-  const regex = new RegExp("```" + identifier + "\\s*([\\s\\S]*?)```", "m");
+  const regex = new RegExp("```" + escapeRegex(identifier) + "\\s*([\\s\\S]*?)```", "m");
 
   // Also check wrapped blocks (hidden divs)
   const wrappedRegex = new RegExp(
-    `<div style="display: none;">\\s*\`\`\`${identifier}\\s*([\\s\\S]*?)\`\`\`\\s*</div>`,
+    `<div style="display: none;">\\s*\`\`\`${escapeRegex(identifier)}\\s*([\\s\\S]*?)\`\`\`\\s*</div>`,
     "m"
   );
 
@@ -455,7 +456,7 @@ function hideTrackerBlocks() {
 
   const identifier = getSettings("codeBlockIdentifier");
   const codeElements = document.querySelectorAll(
-    `#chat code[class*="${identifier}"]`
+    `#chat code[class*="${CSS.escape(identifier)}"]`
   );
 
   codeElements.forEach((codeEl) => {
@@ -492,6 +493,8 @@ globalThis.stTrackerGenInterceptor = async function (
   for (let i = clonedChat.length - 1; i >= 0; i--) {
     const msg = clonedChat[i];
     if (!msg.mes || msg.is_user || msg.is_system) continue;
+    const hasTracker = parseTrackerFromMessage(msg.mes);
+    if (!hasTracker) continue;
     assistantCount++;
     if (assistantCount >= retainCount) {
       cutoffIndex = i;
@@ -504,7 +507,7 @@ globalThis.stTrackerGenInterceptor = async function (
       const msg = clonedChat[i];
       if (!msg.mes) continue;
 
-      const regex = new RegExp("```" + identifier + "[\\s\\S]*?```", "g");
+      const regex = new RegExp("```" + escapeRegex(identifier) + "[\\s\\S]*?```", "g");
       msg.mes = msg.mes.replace(regex, "").trim();
       // Clean wrapper divs
       msg.mes = msg.mes
@@ -655,7 +658,7 @@ async function callSecondaryLLM(prompt, provider, model, opts = {}) {
 
   let apiKey = opts.apiKey || null;
   const streaming = opts.streaming !== false;
-  const temperature = opts.temperature || 0.7;
+  const temperature = opts.temperature ?? 0.7;
 
   let url, headers, body;
 
@@ -883,7 +886,7 @@ async function generateTrackerWithSecondaryLLM(targetMesId) {
 
   const messageCount = parseInt(getSettings("secondaryLLMMessageCount")) || 5;
   const temperature =
-    parseFloat(getSettings("secondaryLLMTemperature")) || 0.7;
+    parseFloat(getSettings("secondaryLLMTemperature")) ?? 0.7;
   const streaming = getSettings("secondaryLLMStreaming") !== false;
 
   // When targeting a specific message, only consider messages up to that point
@@ -930,7 +933,7 @@ async function generateTrackerWithSecondaryLLM(targetMesId) {
     // Clean out existing tracker blocks
     let content = msg.mes || "";
     content = content
-      .replace(new RegExp("```" + identifier + "[\\s\\S]*?```", "g"), "")
+      .replace(new RegExp("```" + escapeRegex(identifier) + "[\\s\\S]*?```", "g"), "")
       .trim();
     if (stripHTML) {
       content = content.replace(/<[^>]*>/g, "");
@@ -1546,11 +1549,12 @@ function setupEventHandlers() {
 
       const msg = context.chat[mesId];
       const identifier = getSettings("codeBlockIdentifier") || DEFAULT_SETTINGS.codeBlockIdentifier;
-      const regex = new RegExp("```" + identifier + "\\s*[\\s\\S]*?```", "g");
+      const escapedId = escapeRegex(identifier);
+      const regex = new RegExp("```" + escapedId + "\\s*[\\s\\S]*?```", "g");
       const newBlock = "```" + identifier + "\n" + trackerText + "\n```";
 
       if (regex.test(msg.mes)) {
-        msg.mes = msg.mes.replace(new RegExp("```" + identifier + "\\s*[\\s\\S]*?```", "g"), newBlock);
+        msg.mes = msg.mes.replace(new RegExp("```" + escapedId + "\\s*[\\s\\S]*?```", "g"), newBlock);
       } else {
         log("Regenerate: no existing tracker block found, appending new block");
         msg.mes += "\n\n" + newBlock;
