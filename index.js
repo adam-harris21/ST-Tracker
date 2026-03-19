@@ -513,8 +513,10 @@ async function callSecondaryLLM(prompt, provider, model, opts = {}) {
   if (config.format === "sillytavern") {
     const profileId = opts.profileId || getSettings("secondaryLLMProfile");
 
-    // If a profile is selected, read its data and make a DIRECT API call
-    // This NEVER touches ST's active connection — purely read-only
+    // If a profile is selected, read its data and route through ST's proxy
+    // This NEVER touches ST's active connection — we only read the profile to get
+    // the api type and model, then pass chat_completion_source to the proxy
+    // so ST uses the right provider and API key internally
     if (profileId) {
       const profiles = getConnectionProfiles();
       const profile = profiles.find((p) => p.id === profileId);
@@ -522,77 +524,22 @@ async function callSecondaryLLM(prompt, provider, model, opts = {}) {
 
       const profileAPI = profile.api || "";
       const profileModel = model || profile.model || "";
-      const profileUrl = profile["api-url"] || profile["api_url"] || "";
-      const profileSecretId = profile["secret-id"] || profile["secret_id"] || "";
-      const format = mapProfileAPIToFormat(profileAPI);
 
-      log(`Using profile "${profile.name}" (api: ${profileAPI}, model: ${profileModel}, secret-id: ${profileSecretId ? "present" : "none"}, api-url: ${profileUrl || "default"}) — READ-ONLY, no connection switching`);
-
-      // Get API key: need the secret key name (e.g. "api_key_openai") + the profile's secret UUID
-      const secretKeyName = mapProfileAPIToSecretKey(profileAPI);
-      let profileApiKey = null;
-
-      if (secretKeyName && profileSecretId) {
-        // Fetch the specific secret by key name + UUID
-        profileApiKey = await fetchSecretKey(secretKeyName, profileSecretId);
-      }
-      if (!profileApiKey && secretKeyName) {
-        // Fallback: fetch the active secret for this API type (no specific ID)
-        profileApiKey = await fetchSecretKey(secretKeyName);
-      }
-      if (!profileApiKey) {
-        throw new Error(`No API key found for profile "${profile.name}" (api: ${profileAPI}). Check SillyTavern API settings.`);
-      }
-
-      // Determine endpoint
-      const endpoint = profileUrl || getDefaultEndpointForAPI(profileAPI);
-      if (!endpoint) throw new Error(`Cannot determine endpoint for profile "${profile.name}" (api: ${profileAPI})`);
+      log(`Using profile "${profile.name}" (api: ${profileAPI}, model: ${profileModel}) via ST proxy — READ-ONLY, no connection switching`);
 
       if (!profileModel) throw new Error(`No model found for profile "${profile.name}". Set a Model Override in settings.`);
 
-      // Make a DIRECT API call based on the profile's format
-      // This NEVER touches ST's active connection
-      if (format === "anthropic") {
-        url = endpoint;
-        headers = {
-          "Content-Type": "application/json",
-          "x-api-key": profileApiKey,
-          "anthropic-version": "2023-06-01",
-          "anthropic-dangerous-direct-browser-access": "true",
-        };
-        body = {
-          model: profileModel,
-          max_tokens: 4096,
-          messages: [{ role: "user", content: prompt }],
-          temperature,
-          stream: streaming,
-        };
-      } else if (format === "google") {
-        const action = streaming ? "streamGenerateContent" : "generateContent";
-        url = `${endpoint}/${profileModel}:${action}?key=${profileApiKey}`;
-        headers = { "Content-Type": "application/json" };
-        body = {
-          contents: [{ role: "user", parts: [{ text: prompt }] }],
-          generationConfig: { temperature, maxOutputTokens: 4096 },
-        };
-      } else {
-        // OpenAI-compatible (openai, openrouter, etc.)
-        url = endpoint;
-        headers = {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${profileApiKey}`,
-        };
-        body = {
-          model: profileModel,
-          messages: [{ role: "user", content: prompt }],
-          temperature,
-          stream: streaming,
-        };
-        if (profileAPI.toLowerCase().includes("openrouter")) {
-          headers["HTTP-Referer"] = window.location.origin;
-          headers["X-Title"] = "ST Tracker";
-        }
-      }
+      // Route through ST's proxy with chat_completion_source set to the profile's API type
+      // ST handles the API key internally — no need to fetch secrets
+      url = config.endpoint;
+      headers = getRequestHeaders();
+      body = {
+        messages: [{ role: "user", content: prompt }],
+        model: profileModel,
+        temperature,
+        stream: false,
+        chat_completion_source: profileAPI,
+      };
 
       const profileRes = await fetch(url, {
         method: "POST",
@@ -605,11 +552,10 @@ async function callSecondaryLLM(prompt, provider, model, opts = {}) {
         throw new Error(`Profile "${profile.name}" request failed: ${profileRes.status} - ${errText}`);
       }
 
-      if (streaming) {
-        return await readStreamResponse(profileRes, format);
-      } else {
-        return await readNonStreamResponse(profileRes, format);
-      }
+      const data = await profileRes.json();
+      if (data.choices?.[0]?.message?.content) return data.choices[0].message.content;
+      if (data.content) return typeof data.content === "string" ? data.content : "";
+      throw new Error("Unexpected response format from ST proxy");
     }
 
     // No profile selected — use ST proxy (current connection)
