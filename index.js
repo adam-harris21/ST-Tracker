@@ -391,7 +391,7 @@ function renderTrackerCard(data) {
     <div class="${CONTAINER_CLASS}"${inlineStyle}>
       <div class="stt-toggle-bar">
         <span class="stt-toggle-label">Scene Tracker</span>
-        <button class="stt-regenerate-btn" title="Regenerate tracker">&#8635;</button>
+        ${getSettings("useSecondaryLLM") ? '<button class="stt-regenerate-btn" title="Regenerate tracker">&#8635;</button>' : ''}
         <span class="stt-toggle-chevron">&#9660;</span>
       </div>
       <div class="stt-card-body">
@@ -1520,25 +1520,48 @@ function setupEventHandlers() {
     try {
       const context = getContext();
       const trackerText = await generateTrackerWithSecondaryLLM(mesId);
-      if (!trackerText) throw new Error("No tracker data");
+      if (!trackerText) {
+        log("Regenerate: secondary LLM returned no data");
+        toastr.warning("Regenerate failed: LLM returned no data. Check your secondary LLM settings.");
+        return;
+      }
+
+      // Validate the LLM response before touching msg.mes
+      let parsed;
+      try {
+        parsed = JSON.parse(trackerText);
+      } catch (_) {
+        try {
+          parsed = simpleYamlToObject(trackerText);
+        } catch (_2) {
+          parsed = null;
+        }
+      }
+      if (!parsed || !parsed.characters || !Array.isArray(parsed.characters)) {
+        log("Regenerate: LLM returned invalid tracker data: " + trackerText.substring(0, 200));
+        toastr.warning("Regenerate failed: LLM returned invalid tracker data");
+        return;
+      }
 
       const msg = context.chat[mesId];
       const identifier = getSettings("codeBlockIdentifier") || DEFAULT_SETTINGS.codeBlockIdentifier;
-      const regex = new RegExp("```" + identifier + "\\s*\\n[\\s\\S]*?```", "g");
+      const regex = new RegExp("```" + identifier + "\\s*[\\s\\S]*?```", "g");
       const newBlock = "```" + identifier + "\n" + trackerText + "\n```";
 
       if (regex.test(msg.mes)) {
-        msg.mes = msg.mes.replace(new RegExp("```" + identifier + "\\s*\\n[\\s\\S]*?```", "g"), newBlock);
+        msg.mes = msg.mes.replace(new RegExp("```" + identifier + "\\s*[\\s\\S]*?```", "g"), newBlock);
       } else {
+        log("Regenerate: no existing tracker block found, appending new block");
         msg.mes += "\n\n" + newBlock;
       }
 
       await context.saveChat();
       renderCardInMessage(mesId);
       hideTrackerBlocks();
+      toastr.success("Tracker regenerated");
     } catch (err) {
       console.error("[STT] Regenerate failed:", err);
-      toastr.error("Failed to regenerate tracker");
+      toastr.error("Failed to regenerate tracker: " + (err.message || "Unknown error"));
     } finally {
       btn.classList.remove("stt-spinning");
       btn.disabled = false;
