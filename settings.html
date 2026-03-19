@@ -100,7 +100,7 @@
           <div class="stt-setting-row">
             <div class="stt-setting-info">
               <label class="stt-setting-label" for="sttUseSecondaryLLM">Enable Secondary LLM</label>
-              <p class="stt-setting-desc">Uses a separate, cheaper model to generate tracker cards — so your RP model doesn't waste tokens on tracker data. Remove <code>{{stt_tracker}}</code> from your prompt when using this.</p>
+              <p class="stt-setting-desc">Generate tracker updates using a separate LLM call. Fires when the main model's response doesn't include a tracker block.</p>
             </div>
             <div class="stt-setting-control">
               <label class="stt-toggle">
@@ -124,6 +124,19 @@
                 <option value="openrouter">OpenRouter</option>
                 <option value="google">Google AI Studio</option>
                 <option value="custom">Custom (OpenAI-Compatible)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Connection Profile (shown only for SillyTavern provider) -->
+          <div class="stt-setting-row" id="sttProfileRow">
+            <div class="stt-setting-info">
+              <label class="stt-setting-label" for="sttProfileSelect">Connection Profile</label>
+              <p class="stt-setting-desc">Pick a saved profile to use its API/model/key. This does NOT switch your active connection — it only reads the profile data.</p>
+            </div>
+            <div class="stt-setting-control">
+              <select id="sttProfileSelect" class="stt-select" style="width: 180px;">
+                <option value="">(Use ST proxy — current connection)</option>
               </select>
             </div>
           </div>

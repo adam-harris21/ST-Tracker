@@ -104,6 +104,7 @@ Rules:
   secondaryLLMTemperature: 0.7,
   secondaryLLMMessageCount: 5,
   secondaryLLMStreaming: true,
+  secondaryLLMProfile: "", // Connection profile ID (for sillytavern provider)
 };
 
 // ============================================================
@@ -389,6 +390,91 @@ async function fetchSecretKey(secretKey) {
   }
 }
 
+// ============================================================
+// CONNECTION PROFILES (READ-ONLY)
+// ============================================================
+
+/**
+ * Read connection profiles from SillyTavern's connection manager.
+ * This is READ-ONLY — we never modify, switch, or touch ST's active connection.
+ * We only read the profile data to extract API type, model, url, and secret-id
+ * so we can make our own SEPARATE API call.
+ */
+function getConnectionProfiles() {
+  try {
+    const profiles = extension_settings?.connectionManager?.profiles;
+    if (!profiles || typeof profiles !== "object") return [];
+    // profiles can be an object keyed by ID or an array
+    if (Array.isArray(profiles)) return profiles;
+    return Object.values(profiles);
+  } catch (e) {
+    log(`Error reading connection profiles: ${e.message}`);
+    return [];
+  }
+}
+
+/**
+ * Map a SillyTavern connection profile's API type to our provider format.
+ * ST profiles use values like "openai", "claude", "openrouter", "palm", etc.
+ */
+function mapProfileAPIToFormat(profileAPI) {
+  if (!profileAPI) return null;
+  const api = profileAPI.toLowerCase();
+  if (api.includes("openai") || api === "chat_completion" || api === "openai") return "openai";
+  if (api.includes("claude") || api.includes("anthropic") || api === "claude") return "anthropic";
+  if (api.includes("openrouter") || api === "openrouter") return "openai"; // OpenRouter uses OpenAI format
+  if (api.includes("palm") || api.includes("google") || api.includes("makersuite") || api === "palm") return "google";
+  // Fallback to openai-compatible format
+  return "openai";
+}
+
+/**
+ * Map a ST profile's API type to the correct secret key name.
+ */
+function mapProfileAPIToSecretKey(profileAPI) {
+  if (!profileAPI) return null;
+  const api = profileAPI.toLowerCase();
+  if (api.includes("openai") || api === "chat_completion" || api === "openai") return SECRET_KEYS.OPENAI;
+  if (api.includes("claude") || api.includes("anthropic") || api === "claude") return SECRET_KEYS.CLAUDE;
+  if (api.includes("openrouter") || api === "openrouter") return SECRET_KEYS.OPENROUTER;
+  if (api.includes("palm") || api.includes("google") || api.includes("makersuite") || api === "palm") return SECRET_KEYS.MAKERSUITE;
+  return null;
+}
+
+/**
+ * Get the default API endpoint for a profile's API type.
+ */
+function getDefaultEndpointForAPI(profileAPI) {
+  if (!profileAPI) return null;
+  const api = profileAPI.toLowerCase();
+  if (api.includes("openai") && !api.includes("router")) return "https://api.openai.com/v1/chat/completions";
+  if (api.includes("claude") || api.includes("anthropic")) return "https://api.anthropic.com/v1/messages";
+  if (api.includes("openrouter")) return "https://openrouter.ai/api/v1/chat/completions";
+  if (api.includes("palm") || api.includes("google") || api.includes("makersuite")) return "https://generativelanguage.googleapis.com/v1beta/models";
+  return null;
+}
+
+function populateProfileDropdown() {
+  const select = document.getElementById("sttProfileSelect");
+  if (!select) return;
+
+  const profiles = getConnectionProfiles();
+  const currentValue = getSettings("secondaryLLMProfile");
+
+  // Clear existing options except the first placeholder
+  select.innerHTML = '<option value="">(Use ST proxy — current connection)</option>';
+
+  profiles.forEach((profile) => {
+    const id = profile.id || "";
+    const name = profile.name || id || "Unnamed";
+    const option = document.createElement("option");
+    option.value = id;
+    option.textContent = name;
+    if (id === currentValue) option.selected = true;
+    select.appendChild(option);
+  });
+}
+
 async function callSecondaryLLM(prompt, provider, model, opts = {}) {
   const config = PROVIDER_CONFIG[provider];
   if (!config) throw new Error(`Unknown provider: ${provider}`);
@@ -399,8 +485,110 @@ async function callSecondaryLLM(prompt, provider, model, opts = {}) {
 
   let url, headers, body;
 
-  // SillyTavern proxy - uses the user's current connection
+  // SillyTavern provider - either use proxy or a connection profile
   if (config.format === "sillytavern") {
+    const profileId = opts.profileId || getSettings("secondaryLLMProfile");
+
+    // If a profile is selected, read its data and make a DIRECT API call
+    // This NEVER touches ST's active connection — purely read-only
+    if (profileId) {
+      const profiles = getConnectionProfiles();
+      const profile = profiles.find((p) => p.id === profileId);
+      if (!profile) throw new Error(`Connection profile "${profileId}" not found. It may have been deleted.`);
+
+      const profileAPI = profile.api || "";
+      const profileModel = model || profile.model || "";
+      const profileUrl = profile["api-url"] || profile["api_url"] || "";
+      const profileSecretId = profile["secret-id"] || profile["secret_id"] || "";
+      const format = mapProfileAPIToFormat(profileAPI);
+
+      log(`Using profile "${profile.name}" (api: ${profileAPI}, model: ${profileModel}) — READ-ONLY, no connection switching`);
+
+      // Get API key from the profile's secret-id
+      let profileApiKey = null;
+      if (profileSecretId) {
+        profileApiKey = await fetchSecretKey(profileSecretId);
+      }
+      if (!profileApiKey) {
+        // Try the default secret key for this API type
+        const defaultSecretKey = mapProfileAPIToSecretKey(profileAPI);
+        if (defaultSecretKey) {
+          profileApiKey = await fetchSecretKey(defaultSecretKey);
+        }
+      }
+      if (!profileApiKey) {
+        throw new Error(`No API key found for profile "${profile.name}". Check SillyTavern API settings.`);
+      }
+
+      // Determine endpoint
+      const endpoint = profileUrl || getDefaultEndpointForAPI(profileAPI);
+      if (!endpoint) throw new Error(`Cannot determine endpoint for profile "${profile.name}" (api: ${profileAPI})`);
+
+      if (!profileModel) throw new Error(`No model found for profile "${profile.name}". Set a Model Override in settings.`);
+
+      // Make a DIRECT API call based on the profile's format
+      // This NEVER touches ST's active connection
+      if (format === "anthropic") {
+        url = endpoint;
+        headers = {
+          "Content-Type": "application/json",
+          "x-api-key": profileApiKey,
+          "anthropic-version": "2023-06-01",
+          "anthropic-dangerous-direct-browser-access": "true",
+        };
+        body = {
+          model: profileModel,
+          max_tokens: 4096,
+          messages: [{ role: "user", content: prompt }],
+          temperature,
+          stream: streaming,
+        };
+      } else if (format === "google") {
+        const action = streaming ? "streamGenerateContent" : "generateContent";
+        url = `${endpoint}/${profileModel}:${action}?key=${profileApiKey}`;
+        headers = { "Content-Type": "application/json" };
+        body = {
+          contents: [{ role: "user", parts: [{ text: prompt }] }],
+          generationConfig: { temperature, maxOutputTokens: 4096 },
+        };
+      } else {
+        // OpenAI-compatible (openai, openrouter, etc.)
+        url = endpoint;
+        headers = {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${profileApiKey}`,
+        };
+        body = {
+          model: profileModel,
+          messages: [{ role: "user", content: prompt }],
+          temperature,
+          stream: streaming,
+        };
+        if (profileAPI.toLowerCase().includes("openrouter")) {
+          headers["HTTP-Referer"] = window.location.origin;
+          headers["X-Title"] = "ST Tracker";
+        }
+      }
+
+      const profileRes = await fetch(url, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(body),
+      });
+
+      if (!profileRes.ok) {
+        const errText = await profileRes.text().catch(() => "");
+        throw new Error(`Profile "${profile.name}" request failed: ${profileRes.status} - ${errText}`);
+      }
+
+      if (streaming) {
+        return await readStreamResponse(profileRes, format);
+      } else {
+        return await readNonStreamResponse(profileRes, format);
+      }
+    }
+
+    // No profile selected — use ST proxy (current connection)
     url = config.endpoint;
     headers = getRequestHeaders();
     body = {
@@ -413,7 +601,7 @@ async function callSecondaryLLM(prompt, provider, model, opts = {}) {
       body.model = model;
     }
 
-    log(`Using SillyTavern connection${model ? ` with model override: ${model}` : ""}`);
+    log(`Using SillyTavern proxy (current connection)${model ? ` with model override: ${model}` : ""}`);
 
     const res = await fetch(url, {
       method: "POST",
@@ -622,9 +810,21 @@ async function generateTrackerWithSecondaryLLM() {
 
   try {
     // Show toast so user knows what's happening
-    const providerName = PROVIDER_CONFIG[provider]?.name || provider;
-    const modelName = model || "(current model)";
-    toastr.info(`${providerName} | ${modelName}`, "ST Tracker — Generating...", { timeOut: 3000 });
+    let toastLabel;
+    if (provider === "sillytavern") {
+      const profileId = getSettings("secondaryLLMProfile");
+      if (profileId) {
+        const profiles = getConnectionProfiles();
+        const profile = profiles.find((p) => p.id === profileId);
+        toastLabel = `Profile: ${profile?.name || profileId} | ${model || profile?.model || "(profile model)"}`;
+      } else {
+        toastLabel = `ST Proxy | ${model || "(current model)"}`;
+      }
+    } else {
+      const providerName = PROVIDER_CONFIG[provider]?.name || provider;
+      toastLabel = `${providerName} | ${model || "(no model)"}`;
+    }
+    toastr.info(toastLabel, "ST Tracker — Generating...", { timeOut: 3000 });
 
     log("Calling secondary LLM...");
     let text = await callSecondaryLLM(prompt, provider, model, {
@@ -816,6 +1016,7 @@ function populateSettingsUI() {
 function toggleCustomAPIFields() {
   const provider = getSettings("secondaryLLMAPI");
   const customFields = document.getElementById("sttCustomAPIFields");
+  const profileRow = document.getElementById("sttProfileRow");
   const modelDesc = document.getElementById("sttModelDesc");
   const modelInput = document.getElementById("sttSecondaryModel");
 
@@ -823,11 +1024,23 @@ function toggleCustomAPIFields() {
     customFields.style.display = provider === "custom" ? "block" : "none";
   }
 
+  // Show profile dropdown only for SillyTavern provider
+  if (profileRow) {
+    profileRow.style.display = provider === "sillytavern" ? "flex" : "none";
+    if (provider === "sillytavern") {
+      populateProfileDropdown();
+    }
+  }
+
   // Update model field label/placeholder based on provider
   if (modelDesc && modelInput) {
-    if (provider === "sillytavern") {
+    const profileId = getSettings("secondaryLLMProfile");
+    if (provider === "sillytavern" && !profileId) {
       modelDesc.textContent = "Optional — leave empty to use your current model.";
       modelInput.placeholder = "(uses current model)";
+    } else if (provider === "sillytavern" && profileId) {
+      modelDesc.textContent = "Optional — leave empty to use the profile's model.";
+      modelInput.placeholder = "(uses profile model)";
     } else {
       modelDesc.textContent = "Required — specify the model to use.";
       modelInput.placeholder = PROVIDER_CONFIG[provider]?.placeholder || "model-name";
@@ -885,6 +1098,15 @@ function attachSettingsListeners() {
       });
     }
   });
+
+  // Profile dropdown listener
+  const profileSelect = document.getElementById("sttProfileSelect");
+  if (profileSelect) {
+    profileSelect.addEventListener("change", () => {
+      setSettings("secondaryLLMProfile", profileSelect.value);
+      toggleCustomAPIFields(); // Update model placeholder text
+    });
+  }
 
   // Test connection button
   const testBtn = document.getElementById("sttTestConnection");
