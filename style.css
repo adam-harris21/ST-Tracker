@@ -63,7 +63,8 @@
   cursor: pointer;
   user-select: none;
   background: rgba(255, 255, 255, 0.04);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid transparent;
+  border-image: linear-gradient(90deg, transparent, color-mix(in srgb, var(--stt-accent) 25%, transparent), transparent) 1;
 }
 
 .stt-toggle-label {
@@ -108,7 +109,7 @@
 
 .stt-header-item {
   font-size: 0.68em;
-  color: rgba(255, 255, 255, 0.7);
+  color: color-mix(in srgb, var(--stt-accent) 30%, rgba(255, 255, 255, 0.7));
   font-weight: 400;
 }
 
@@ -132,12 +133,25 @@
 }
 
 .stt-character-card + .stt-character-card {
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid transparent;
+  border-image: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent) 1;
 }
 
 /* Character name */
 .stt-char-header {
-  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.stt-char-header::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--stt-accent);
+  flex-shrink: 0;
 }
 
 .stt-char-name {
@@ -152,18 +166,20 @@
 .stt-char-fields {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 6px;
+  gap: 8px;
 }
 
 .stt-field {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
   padding: 8px 12px;
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.06);
+  border-left: 2px solid color-mix(in srgb, var(--stt-accent) 30%, transparent);
   border-radius: 14px;
   min-width: 0;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .stt-field-icon {
@@ -176,12 +192,12 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.6px;
-  color: color-mix(in srgb, var(--stt-accent) 60%, rgba(255, 255, 255, 0.5));
+  color: color-mix(in srgb, var(--stt-accent) 70%, rgba(255, 255, 255, 0.5));
 }
 
 .stt-field-value {
-  font-size: 0.75em;
-  color: rgba(255, 255, 255, 0.88);
+  font-size: 0.78em;
+  color: rgba(255, 255, 255, 0.92);
   line-height: 1.25;
   word-break: break-word;
 }
