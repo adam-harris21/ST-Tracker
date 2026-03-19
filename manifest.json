@@ -1,0 +1,12 @@
+{
+  "display_name": "ST Tracker",
+  "loading_order": 100,
+  "requires": [],
+  "optional": [],
+  "js": "index.js",
+  "css": "style.css",
+  "author": "adam-harris21",
+  "version": "1.0.0",
+  "homePage": "https://github.com/adam-harris21/ST-Tracker",
+  "auto_update": true
+}

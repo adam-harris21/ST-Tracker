@@ -1,0 +1,198 @@
+<div id="stt-settings-panel">
+  <div class="stt-main-panel collapsed">
+    <!-- Main Header -->
+    <div class="stt-panel-header" onclick="$(this).parent().toggleClass('collapsed')">
+      <div class="stt-panel-title">
+        <svg class="stt-panel-icon" viewBox="0 0 24 24">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+        </svg>
+        <span>ST Tracker</span>
+      </div>
+      <svg class="stt-chevron" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+    </div>
+
+    <div class="stt-panel-body">
+
+      <!-- ====== Basic Settings ====== -->
+      <div class="stt-section">
+        <div class="stt-section-header" onclick="$(this).parent().toggleClass('collapsed'); $(this).find('.stt-chevron').toggleClass('rotate')">
+          <span>Basic Settings</span>
+          <svg class="stt-chevron" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+        </div>
+        <div class="stt-section-body">
+          <!-- Enable -->
+          <div class="stt-setting-row">
+            <div class="stt-setting-info">
+              <label class="stt-setting-label" for="sttIsEnabled">Enable Tracker</label>
+              <p class="stt-setting-desc">Master switch to enable/disable the extension.</p>
+            </div>
+            <div class="stt-setting-control">
+              <label class="stt-toggle">
+                <input type="checkbox" id="sttIsEnabled">
+                <span class="stt-slider"></span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Code Block Identifier -->
+          <div class="stt-setting-row">
+            <div class="stt-setting-info">
+              <label class="stt-setting-label" for="sttCodeBlockId">Code Block Identifier</label>
+              <p class="stt-setting-desc">Keyword used to identify tracker blocks (e.g., <code>```tracker</code>).</p>
+            </div>
+            <div class="stt-setting-control">
+              <input type="text" id="sttCodeBlockId" class="stt-input" style="width: 110px;">
+            </div>
+          </div>
+
+          <!-- Hide Blocks -->
+          <div class="stt-setting-row">
+            <div class="stt-setting-info">
+              <label class="stt-setting-label" for="sttHideBlocks">Hide Tracker Blocks</label>
+              <p class="stt-setting-desc">Hide raw JSON code blocks in the chat view.</p>
+            </div>
+            <div class="stt-setting-control">
+              <label class="stt-toggle">
+                <input type="checkbox" id="sttHideBlocks">
+                <span class="stt-slider"></span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Retain Count -->
+          <div class="stt-setting-row">
+            <div class="stt-setting-info">
+              <label class="stt-setting-label" for="sttRetainCount">Retain N Trackers</label>
+              <p class="stt-setting-desc">Keep only the last N tracker blocks in LLM context.</p>
+            </div>
+            <div class="stt-setting-control">
+              <input type="number" id="sttRetainCount" class="stt-input" min="1" max="50" style="width: 60px;">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ====== System Prompt ====== -->
+      <div class="stt-section">
+        <div class="stt-section-header" onclick="$(this).parent().toggleClass('collapsed'); $(this).find('.stt-chevron').toggleClass('rotate')">
+          <span>System Prompt</span>
+          <svg class="stt-chevron" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+        </div>
+        <div class="stt-section-body">
+          <div class="stt-setting-row" style="flex-direction: column;">
+            <div class="stt-setting-info">
+              <label class="stt-setting-label" for="sttSystemPrompt">Tracker Prompt</label>
+              <p class="stt-setting-desc">Injected via <code>{{stt_tracker}}</code>. Use <code>{{stt_format}}</code> to include the data format.</p>
+            </div>
+            <textarea id="sttSystemPrompt" class="stt-textarea" rows="8"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- ====== Secondary LLM ====== -->
+      <div class="stt-section collapsed">
+        <div class="stt-section-header" onclick="$(this).parent().toggleClass('collapsed'); $(this).find('.stt-chevron').toggleClass('rotate')">
+          <span>Secondary LLM</span>
+          <svg class="stt-chevron" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+        </div>
+        <div class="stt-section-body">
+          <!-- Enable Secondary LLM -->
+          <div class="stt-setting-row">
+            <div class="stt-setting-info">
+              <label class="stt-setting-label" for="sttUseSecondaryLLM">Enable Secondary LLM</label>
+              <p class="stt-setting-desc">Generate tracker data using a separate LLM call when the AI doesn't include one.</p>
+            </div>
+            <div class="stt-setting-control">
+              <label class="stt-toggle">
+                <input type="checkbox" id="sttUseSecondaryLLM">
+                <span class="stt-slider"></span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Provider -->
+          <div class="stt-setting-row">
+            <div class="stt-setting-info">
+              <label class="stt-setting-label" for="sttSecondaryAPI">Provider</label>
+              <p class="stt-setting-desc">Uses API key from SillyTavern settings (except Custom).</p>
+            </div>
+            <div class="stt-setting-control">
+              <select id="sttSecondaryAPI" class="stt-select">
+                <option value="openai">OpenAI</option>
+                <option value="anthropic">Anthropic Claude</option>
+                <option value="openrouter">OpenRouter</option>
+                <option value="google">Google AI Studio</option>
+                <option value="custom">Custom (OpenAI-Compatible)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Model -->
+          <div class="stt-setting-row">
+            <div class="stt-setting-info">
+              <label class="stt-setting-label" for="sttSecondaryModel">Model</label>
+            </div>
+            <div class="stt-setting-control">
+              <input type="text" id="sttSecondaryModel" class="stt-input" placeholder="gpt-4o-mini" style="width: 180px;">
+            </div>
+          </div>
+
+          <!-- Custom API Fields (hidden by default) -->
+          <div id="sttCustomAPIFields" style="display: none;">
+            <div class="stt-setting-row">
+              <div class="stt-setting-info">
+                <label class="stt-setting-label" for="sttSecondaryEndpoint">Endpoint URL</label>
+              </div>
+              <div class="stt-setting-control">
+                <input type="text" id="sttSecondaryEndpoint" class="stt-input" placeholder="https://api.example.com/v1/chat/completions" style="width: 100%;">
+              </div>
+            </div>
+            <div class="stt-setting-row">
+              <div class="stt-setting-info">
+                <label class="stt-setting-label" for="sttSecondaryAPIKey">API Key</label>
+              </div>
+              <div class="stt-setting-control">
+                <input type="password" id="sttSecondaryAPIKey" class="stt-input" placeholder="sk-..." style="width: 180px;">
+              </div>
+            </div>
+          </div>
+
+          <!-- Temperature -->
+          <div class="stt-setting-row">
+            <div class="stt-setting-info">
+              <label class="stt-setting-label" for="sttSecondaryTemp">Temperature</label>
+            </div>
+            <div class="stt-setting-control">
+              <input type="number" id="sttSecondaryTemp" class="stt-input" min="0" max="2" step="0.1" style="width: 65px;">
+            </div>
+          </div>
+
+          <!-- Context Messages -->
+          <div class="stt-setting-row">
+            <div class="stt-setting-info">
+              <label class="stt-setting-label" for="sttSecondaryMsgCount">Context Messages</label>
+              <p class="stt-setting-desc">Number of recent messages to send as context.</p>
+            </div>
+            <div class="stt-setting-control">
+              <input type="number" id="sttSecondaryMsgCount" class="stt-input" min="1" max="50" style="width: 60px;">
+            </div>
+          </div>
+
+          <!-- Streaming -->
+          <div class="stt-setting-row">
+            <div class="stt-setting-info">
+              <label class="stt-setting-label" for="sttSecondaryStreaming">Streaming</label>
+            </div>
+            <div class="stt-setting-control">
+              <label class="stt-toggle">
+                <input type="checkbox" id="sttSecondaryStreaming">
+                <span class="stt-slider"></span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
