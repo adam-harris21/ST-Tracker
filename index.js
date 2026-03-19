@@ -26,6 +26,13 @@ const SECRET_KEYS = {
 };
 
 const PROVIDER_CONFIG = {
+  sillytavern: {
+    name: "SillyTavern (Current Connection)",
+    endpoint: "/api/backends/chat-completions/generate",
+    secretKey: null,
+    placeholder: "(uses your current model)",
+    format: "sillytavern",
+  },
   openai: {
     name: "OpenAI",
     endpoint: "https://api.openai.com/v1/chat/completions",
@@ -90,7 +97,7 @@ Rules:
 
   // Secondary LLM
   useSecondaryLLM: false,
-  secondaryLLMAPI: "openai",
+  secondaryLLMAPI: "sillytavern",
   secondaryLLMModel: "",
   secondaryLLMEndpoint: "",
   secondaryLLMAPIKey: "",
@@ -390,6 +397,42 @@ async function callSecondaryLLM(prompt, provider, model, opts = {}) {
   const streaming = opts.streaming !== false;
   const temperature = opts.temperature || 0.7;
 
+  let url, headers, body;
+
+  // SillyTavern proxy - uses the user's current connection
+  if (config.format === "sillytavern") {
+    url = config.endpoint;
+    headers = getRequestHeaders();
+    body = {
+      messages: [{ role: "user", content: prompt }],
+      temperature,
+      stream: false, // ST proxy handles streaming differently, keep it simple
+    };
+    // Only include model if user specified an override
+    if (model) {
+      body.model = model;
+    }
+
+    log(`Using SillyTavern connection${model ? ` with model override: ${model}` : ""}`);
+
+    const res = await fetch(url, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) {
+      const errText = await res.text().catch(() => "");
+      throw new Error(`ST proxy request failed: ${res.status} - ${errText}`);
+    }
+
+    const data = await res.json();
+    // ST proxy returns OpenAI-compatible format
+    if (data.choices?.[0]?.message?.content) return data.choices[0].message.content;
+    if (data.content) return typeof data.content === "string" ? data.content : "";
+    throw new Error("Unexpected response format from ST proxy");
+  }
+
   // Fetch API key from ST secrets for known providers
   if (provider !== "custom" && config.secretKey) {
     apiKey = await fetchSecretKey(config.secretKey);
@@ -399,8 +442,6 @@ async function callSecondaryLLM(prompt, provider, model, opts = {}) {
       );
     }
   }
-
-  let url, headers, body;
 
   if (config.format === "anthropic") {
     url = config.endpoint;
@@ -769,8 +810,23 @@ function populateSettingsUI() {
 function toggleCustomAPIFields() {
   const provider = getSettings("secondaryLLMAPI");
   const customFields = document.getElementById("sttCustomAPIFields");
+  const modelRow = document.getElementById("sttModelRow");
+  const modelDesc = document.getElementById("sttModelDesc");
+  const modelInput = document.getElementById("sttSecondaryModel");
+
   if (customFields) {
     customFields.style.display = provider === "custom" ? "block" : "none";
+  }
+
+  // Update model field label/placeholder based on provider
+  if (modelDesc && modelInput) {
+    if (provider === "sillytavern") {
+      modelDesc.textContent = "Optional — leave empty to use your current model.";
+      modelInput.placeholder = "(uses current model)";
+    } else {
+      modelDesc.textContent = "Required — specify the model to use.";
+      modelInput.placeholder = PROVIDER_CONFIG[provider]?.placeholder || "model-name";
+    }
   }
 }
 

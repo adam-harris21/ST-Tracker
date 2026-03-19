@@ -118,6 +118,7 @@
             </div>
             <div class="stt-setting-control">
               <select id="sttSecondaryAPI" class="stt-select">
+                <option value="sillytavern">SillyTavern (Current Connection)</option>
                 <option value="openai">OpenAI</option>
                 <option value="anthropic">Anthropic Claude</option>
                 <option value="openrouter">OpenRouter</option>
@@ -128,12 +129,13 @@
           </div>
 
           <!-- Model -->
-          <div class="stt-setting-row">
+          <div class="stt-setting-row" id="sttModelRow">
             <div class="stt-setting-info">
-              <label class="stt-setting-label" for="sttSecondaryModel">Model</label>
+              <label class="stt-setting-label" for="sttSecondaryModel">Model Override</label>
+              <p class="stt-setting-desc" id="sttModelDesc">Optional — leave empty to use your current model.</p>
             </div>
             <div class="stt-setting-control">
-              <input type="text" id="sttSecondaryModel" class="stt-input" placeholder="gpt-4o-mini" style="width: 180px;">
+              <input type="text" id="sttSecondaryModel" class="stt-input" placeholder="(uses current model)" style="width: 180px;">
             </div>
           </div>
 
