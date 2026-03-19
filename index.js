@@ -234,7 +234,7 @@ function renderTrackerCard(data) {
   // Build inline style to override accent color if the LLM provided one
   let inlineStyle = "";
   if (accentColor && /^#[0-9a-fA-F]{3,8}$/.test(accentColor)) {
-    inlineStyle = ` style="--stt-accent: ${accentColor}; --stt-accent-dim: ${accentColor}1f;"`;
+    inlineStyle = ` style="--stt-accent: ${accentColor}; --stt-accent-dim: ${accentColor}18; --stt-accent-bg: ${accentColor}22; --stt-accent-border: ${accentColor}30;"`;
   }
 
   let headerHtml = "";
