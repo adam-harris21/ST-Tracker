@@ -24,7 +24,7 @@
 
 .stt-card-container {
   margin-top: 10px;
-  border-radius: 8px;
+  border-radius: 14px;
   background: rgba(16, 16, 22, 0.9);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
@@ -136,7 +136,7 @@
   gap: 2px;
   padding: 4px 7px;
   background: rgba(0, 0, 0, 0.2);
-  border-radius: 5px;
+  border-radius: 8px;
   min-width: 0;
 }
 
@@ -173,7 +173,7 @@
 .stt-main-panel {
   background: var(--stt-bg);
   border: 1px solid var(--stt-border);
-  border-radius: 10px;
+  border-radius: 14px;
   overflow: hidden;
   margin-bottom: 16px;
 }
@@ -235,7 +235,7 @@
 /* Section headers within panel */
 .stt-section {
   background: rgba(0, 0, 0, 0.15);
-  border-radius: 8px;
+  border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.04);
   overflow: hidden;
 }
@@ -398,7 +398,7 @@
   background: var(--stt-accent);
   color: white;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   padding: 7px 16px;
   font-size: 0.85em;
   font-weight: 600;
