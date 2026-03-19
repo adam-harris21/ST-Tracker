@@ -62,7 +62,7 @@
   padding: 10px 16px;
   cursor: pointer;
   user-select: none;
-  background: rgba(255, 255, 255, 0.04);
+  background: color-mix(in srgb, var(--stt-accent) 15%, transparent);
   border-bottom: 1px solid transparent;
   border-image: linear-gradient(90deg, transparent, color-mix(in srgb, var(--stt-accent) 25%, transparent), transparent) 1;
 }
