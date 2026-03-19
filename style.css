@@ -98,25 +98,28 @@
 .stt-header {
   position: relative;
   z-index: 1;
-  padding: 8px 16px;
-  background: transparent;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 10px 16px;
+  background: color-mix(in srgb, var(--stt-accent) 4%, transparent);
+  border-bottom: 1px solid;
+  border-image: linear-gradient(90deg, transparent, color-mix(in srgb, var(--stt-accent) 15%, transparent), transparent) 1;
   display: flex;
   flex-wrap: wrap;
-  gap: 4px 6px;
+  gap: 6px 8px;
   align-items: center;
 }
 
 .stt-header-item {
   font-size: 0.68em;
   color: color-mix(in srgb, var(--stt-accent) 30%, rgba(255, 255, 255, 0.7));
-  font-weight: 400;
+  font-weight: 500;
+  background: rgba(255, 255, 255, 0.06);
+  padding: 3px 10px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .stt-header-item + .stt-header-item::before {
-  content: " · ";
-  color: rgba(255, 255, 255, 0.3);
-  margin-right: 6px;
+  content: none;
 }
 
 /* Characters stack */
