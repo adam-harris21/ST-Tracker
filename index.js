@@ -754,6 +754,9 @@ async function generateTrackerWithSecondaryLLM() {
   let prompt = getSettings("systemPrompt") || DEFAULT_SETTINGS.systemPrompt;
   const formatContent = generateFormatContent();
   prompt = prompt.replace(/\{\{stt_format\}\}/g, formatContent);
+  if (!prompt.includes("```" + identifier)) {
+    prompt += "\n\n" + formatContent;
+  }
   prompt = prompt.replace(/\{\{user\}\}/gi, userName);
   prompt = prompt.replace(/\{\{char\}\}/gi, charName);
 
@@ -858,6 +861,11 @@ function registerMacros() {
     // Replace nested {{stt_format}}
     if (output.includes("{{stt_format}}")) {
       output = output.replace(/\{\{stt_format\}\}/g, generateFormatContent());
+    }
+
+    // If saved prompt didn't contain {{stt_format}}, append format template
+    if (!output.includes("```" + getSettings("codeBlockIdentifier"))) {
+      output += "\n\n" + generateFormatContent();
     }
 
     // Replace {{user}} and {{char}}
