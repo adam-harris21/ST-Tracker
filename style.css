@@ -232,6 +232,7 @@
 
 /* Main collapsible wrapper */
 .stt-main-panel {
+  background: var(--stt-bg);
   border-radius: 14px;
   overflow: hidden;
   margin-bottom: 16px;
