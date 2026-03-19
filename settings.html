@@ -41,7 +41,7 @@
               <p class="stt-setting-desc">Keyword used to identify tracker blocks (e.g., <code>```tracker</code>).</p>
             </div>
             <div class="stt-setting-control">
-              <input type="text" id="sttCodeBlockId" class="stt-input" style="width: 110px;">
+              <input type="text" id="sttCodeBlockId" class="stt-input stt-input-sm">
             </div>
           </div>
 
@@ -49,7 +49,7 @@
           <div class="stt-setting-row">
             <div class="stt-setting-info">
               <label class="stt-setting-label" for="sttHideBlocks">Hide Tracker Blocks</label>
-              <p class="stt-setting-desc">Hide raw JSON code blocks in the chat view.</p>
+              <p class="stt-setting-desc">Hide raw code blocks in the chat view.</p>
             </div>
             <div class="stt-setting-control">
               <label class="stt-toggle">
@@ -66,14 +66,60 @@
               <p class="stt-setting-desc">Keep only the last N tracker blocks in LLM context.</p>
             </div>
             <div class="stt-setting-control">
-              <input type="number" id="sttRetainCount" class="stt-input" min="1" max="50" style="width: 60px;">
+              <input type="number" id="sttRetainCount" class="stt-input stt-input-xs" min="1" max="50">
+            </div>
+          </div>
+
+          <!-- Tracker Format -->
+          <div class="stt-setting-row">
+            <div class="stt-setting-info">
+              <label class="stt-setting-label" for="sttTrackerFormat">Tracker Format</label>
+              <p class="stt-setting-desc">Data format for tracker blocks. YAML uses fewer tokens.</p>
+            </div>
+            <div class="stt-setting-control">
+              <select id="sttTrackerFormat" class="stt-select">
+                <option value="json">JSON</option>
+                <option value="yaml">YAML</option>
+              </select>
             </div>
           </div>
         </div>
       </div>
 
+      <!-- ====== Custom Fields ====== -->
+      <div class="stt-section collapsed">
+        <div class="stt-section-header" onclick="$(this).parent().toggleClass('collapsed'); $(this).find('.stt-chevron').toggleClass('rotate')">
+          <span>Custom Fields</span>
+          <svg class="stt-chevron" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+        </div>
+        <div class="stt-section-body">
+          <p class="stt-setting-desc" style="margin-bottom: 10px;">Customize the fields tracked for each character and globally. Changes affect both the format template and card rendering.</p>
+
+          <!-- Global Fields -->
+          <div class="stt-field-editor-section">
+            <label class="stt-setting-label">Global Fields</label>
+            <p class="stt-setting-desc">Shared fields (time, weather, etc.) shown in the card header.</p>
+            <div id="sttGlobalFieldsList" class="stt-field-editor-list"></div>
+            <button id="sttAddGlobalField" class="stt-btn-test" style="margin-top: 8px;">+ Add Global Field</button>
+          </div>
+
+          <!-- Character Fields -->
+          <div class="stt-field-editor-section" style="margin-top: 14px;">
+            <label class="stt-setting-label">Character Fields</label>
+            <p class="stt-setting-desc">Per-character fields shown in the card body.</p>
+            <div id="sttCharFieldsList" class="stt-field-editor-list"></div>
+            <button id="sttAddCharField" class="stt-btn-test" style="margin-top: 8px;">+ Add Character Field</button>
+          </div>
+
+          <!-- Reset Fields -->
+          <div style="margin-top: 14px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 12px;">
+            <button id="sttResetFields" class="stt-btn-test" style="background: var(--stt-danger);">Reset Fields to Default</button>
+          </div>
+        </div>
+      </div>
+
       <!-- ====== System Prompt ====== -->
-      <div class="stt-section">
+      <div class="stt-section collapsed">
         <div class="stt-section-header" onclick="$(this).parent().toggleClass('collapsed'); $(this).find('.stt-chevron').toggleClass('rotate')">
           <span>System Prompt</span>
           <svg class="stt-chevron" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
@@ -136,7 +182,7 @@
               <p class="stt-setting-desc">Pick a saved profile to use its API/model/key. This does NOT switch your active connection — it only reads the profile data.</p>
             </div>
             <div class="stt-setting-control">
-              <select id="sttProfileSelect" class="stt-select" style="width: 180px;">
+              <select id="sttProfileSelect" class="stt-select stt-select-wide">
                 <option value="">(Use ST proxy — current connection)</option>
               </select>
             </div>
@@ -149,7 +195,7 @@
               <p class="stt-setting-desc" id="sttModelDesc">Optional — leave empty to use your current model.</p>
             </div>
             <div class="stt-setting-control">
-              <input type="text" id="sttSecondaryModel" class="stt-input" placeholder="(uses current model)" style="width: 180px;">
+              <input type="text" id="sttSecondaryModel" class="stt-input stt-input-wide" placeholder="(uses current model)">
             </div>
           </div>
 
@@ -168,7 +214,7 @@
                 <label class="stt-setting-label" for="sttSecondaryAPIKey">API Key</label>
               </div>
               <div class="stt-setting-control">
-                <input type="password" id="sttSecondaryAPIKey" class="stt-input" placeholder="sk-..." style="width: 180px;">
+                <input type="password" id="sttSecondaryAPIKey" class="stt-input stt-input-wide" placeholder="sk-...">
               </div>
             </div>
           </div>
@@ -179,7 +225,7 @@
               <label class="stt-setting-label" for="sttSecondaryTemp">Temperature</label>
             </div>
             <div class="stt-setting-control">
-              <input type="number" id="sttSecondaryTemp" class="stt-input" min="0" max="2" step="0.1" style="width: 65px;">
+              <input type="number" id="sttSecondaryTemp" class="stt-input stt-input-xs" min="0" max="2" step="0.1">
             </div>
           </div>
 
@@ -190,7 +236,7 @@
               <p class="stt-setting-desc">Number of recent messages to send as context.</p>
             </div>
             <div class="stt-setting-control">
-              <input type="number" id="sttSecondaryMsgCount" class="stt-input" min="1" max="50" style="width: 60px;">
+              <input type="number" id="sttSecondaryMsgCount" class="stt-input stt-input-xs" min="1" max="50">
             </div>
           </div>
 
@@ -207,6 +253,20 @@
             </div>
           </div>
 
+          <!-- Strip HTML -->
+          <div class="stt-setting-row">
+            <div class="stt-setting-info">
+              <label class="stt-setting-label" for="sttStripHTML">Strip HTML from Messages</label>
+              <p class="stt-setting-desc">Remove HTML tags from message content before sending to secondary LLM.</p>
+            </div>
+            <div class="stt-setting-control">
+              <label class="stt-toggle">
+                <input type="checkbox" id="sttStripHTML">
+                <span class="stt-slider"></span>
+              </label>
+            </div>
+          </div>
+
           <!-- Test Connection -->
           <div class="stt-setting-row" style="border-top: 1px solid rgba(255,255,255,0.08); padding-top: 16px; margin-top: 4px;">
             <div class="stt-setting-info">
@@ -215,6 +275,24 @@
             </div>
             <div class="stt-setting-control">
               <button id="sttTestConnection" class="stt-btn-test">Test</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ====== Danger Zone ====== -->
+      <div class="stt-section collapsed">
+        <div class="stt-section-header" onclick="$(this).parent().toggleClass('collapsed'); $(this).find('.stt-chevron').toggleClass('rotate')">
+          <span style="color: var(--stt-danger);">Danger Zone</span>
+          <svg class="stt-chevron" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+        </div>
+        <div class="stt-section-body">
+          <div class="stt-setting-row" style="flex-direction: column; gap: 10px;">
+            <p class="stt-setting-desc">These actions cannot be undone.</p>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+              <button id="sttResetAllSettings" class="stt-btn-test" style="background: var(--stt-danger);">Reset All Settings</button>
+              <button id="sttExportSettings" class="stt-btn-test">Export Settings</button>
+              <button id="sttImportSettings" class="stt-btn-test">Import Settings</button>
             </div>
           </div>
         </div>

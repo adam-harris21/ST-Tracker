@@ -119,6 +119,23 @@ Output the tracker in this exact format:
    - Avoid redundancies — use only details provided or logically inferred.
    - Always place the tracker block at the END of your response.`,
 
+  // Custom fields
+  customFields: [
+    { key: "location", label: "Location", description: "SPECIFIC_DETAILED_LOCATION" },
+    { key: "clothing", label: "Clothing", description: "FULL_OUTFIT_INCLUDING_UNDERWEAR" },
+    { key: "position", label: "Position", description: "BODY_POSITION_OR_POSE" },
+    { key: "topics", label: "Topics", description: "SHORT_KEYWORDS" },
+    { key: "present", label: "Present", description: "OTHER_CHARACTERS_NEARBY" },
+    { key: "hair", label: "Hair", description: "HAIR_STYLE_AND_STATE" },
+    { key: "makeup", label: "Makeup", description: "MAKEUP_DESCRIPTION" },
+    { key: "state", label: "State", description: "EMOTIONAL_PHYSICAL_STATE_AND_DRESS_STATE" },
+  ],
+  globalFields: [
+    { key: "time", label: "Time", description: "HH:MM:SS; MM/DD/YYYY (Day Name)" },
+    { key: "weather", label: "Weather", description: "CURRENT_WEATHER" },
+    { key: "accent_color", label: "Accent Color", description: "HEX_COLOR_THAT_FITS_THE_RP_MOOD_AND_SETTING" },
+  ],
+
   // Secondary LLM
   useSecondaryLLM: false,
   secondaryLLMAPI: "sillytavern",
@@ -129,6 +146,10 @@ Output the tracker in this exact format:
   secondaryLLMMessageCount: 5,
   secondaryLLMStreaming: true,
   secondaryLLMProfile: "", // Connection profile ID (for sillytavern provider)
+  secondaryLLMStripHTML: true,
+
+  // Format
+  trackerFormat: "json", // "json" or "yaml"
 };
 
 // ============================================================
@@ -172,6 +193,80 @@ function initSettings() {
 }
 
 // ============================================================
+// MINIMAL YAML SUPPORT
+// ============================================================
+function simpleYamlToObject(yamlStr) {
+  const lines = yamlStr.split("\n");
+  const result = {};
+  let inCharacters = false;
+  let currentChar = null;
+
+  for (const rawLine of lines) {
+    const line = rawLine.trimEnd();
+    if (!line.trim() || line.trim().startsWith("#")) continue;
+
+    if (line.match(/^characters:\s*$/)) {
+      inCharacters = true;
+      result.characters = [];
+      continue;
+    }
+
+    if (inCharacters) {
+      const itemMatch = line.match(/^\s+-\s+(\w+):\s*(.+)/);
+      if (itemMatch) {
+        // New array item (e.g. "  - name: ...")
+        currentChar = {};
+        result.characters.push(currentChar);
+        currentChar[itemMatch[1]] = stripYamlQuotes(itemMatch[2]);
+        continue;
+      }
+      const propMatch = line.match(/^\s+(\w+):\s*(.+)/);
+      if (propMatch && currentChar) {
+        currentChar[propMatch[1]] = stripYamlQuotes(propMatch[2]);
+        continue;
+      }
+    } else {
+      const topMatch = line.match(/^(\w+):\s*(.+)/);
+      if (topMatch) {
+        result[topMatch[1]] = stripYamlQuotes(topMatch[2]);
+      }
+    }
+  }
+  return result;
+}
+
+function stripYamlQuotes(val) {
+  val = val.trim();
+  if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+    return val.slice(1, -1);
+  }
+  return val;
+}
+
+function objectToSimpleYaml(obj) {
+  let yaml = "";
+  for (const [key, value] of Object.entries(obj)) {
+    if (key === "characters") continue;
+    yaml += `${key}: "${String(value)}"\n`;
+  }
+  if (obj.characters && Array.isArray(obj.characters)) {
+    yaml += "characters:\n";
+    for (const char of obj.characters) {
+      let first = true;
+      for (const [key, value] of Object.entries(char)) {
+        if (first) {
+          yaml += `  - ${key}: "${String(value)}"\n`;
+          first = false;
+        } else {
+          yaml += `    ${key}: "${String(value)}"\n`;
+        }
+      }
+    }
+  }
+  return yaml;
+}
+
+// ============================================================
 // TRACKER DATA PARSING
 // ============================================================
 function parseTrackerFromMessage(messageText) {
@@ -187,20 +282,23 @@ function parseTrackerFromMessage(messageText) {
   );
 
   let match = messageText.match(wrappedRegex);
-  if (match && match[1]) {
-    try {
-      return JSON.parse(match[1].trim());
-    } catch (e) {
-      log(`Failed to parse wrapped tracker JSON: ${e.message}`);
-    }
-  }
+  if (!match) match = messageText.match(regex);
 
-  match = messageText.match(regex);
   if (match && match[1]) {
+    const raw = match[1].trim();
+    // Try JSON first
     try {
-      return JSON.parse(match[1].trim());
+      return JSON.parse(raw);
     } catch (e) {
-      log(`Failed to parse tracker JSON: ${e.message}`);
+      // Fall back to YAML parser
+      try {
+        const parsed = simpleYamlToObject(raw);
+        if (parsed && parsed.characters && Array.isArray(parsed.characters)) {
+          return parsed;
+        }
+      } catch (e2) {
+        log(`Failed to parse tracker data: ${e.message}`);
+      }
     }
   }
 
@@ -240,16 +338,12 @@ function renderField(icon, label, value) {
 
 function renderCharacterCard(character) {
   const name = character.name || "Unknown";
+  const fields = getSettings("customFields") || DEFAULT_SETTINGS.customFields;
 
   let fieldsHtml = "";
-  fieldsHtml += renderField("&#128205;", "Location", character.location);
-  fieldsHtml += renderField("&#128090;", "Clothing", character.clothing);
-  fieldsHtml += renderField("&#129485;", "Position", character.position);
-  fieldsHtml += renderField("&#128172;", "Topics", character.topics);
-  fieldsHtml += renderField("&#128101;", "Present", character.present);
-  fieldsHtml += renderField("&#128135;", "Hair", character.hair);
-  fieldsHtml += renderField("&#128132;", "Makeup", character.makeup);
-  fieldsHtml += renderField("&#127919;", "State", character.state);
+  for (const field of fields) {
+    fieldsHtml += renderField("", field.label, character[field.key]);
+  }
 
   return `
     <div class="stt-character-card">
@@ -265,8 +359,6 @@ function renderCharacterCard(character) {
 function renderTrackerCard(data) {
   if (!data) return "";
 
-  const time = data.time || "";
-  const weather = data.weather || "";
   const accentColor = data.accent_color || "";
   const characters = data.characters || [];
 
@@ -278,13 +370,15 @@ function renderTrackerCard(data) {
     inlineStyle = ` style="--stt-accent: ${accentColor}; border-left: 2px solid ${accentColor};"`;
   }
 
+  // Build header from globalFields (skip accent_color — used for styling only)
+  const globalFields = getSettings("globalFields") || DEFAULT_SETTINGS.globalFields;
+  const headerItems = globalFields
+    .filter(f => f.key !== "accent_color" && data[f.key])
+    .map(f => `<span class="stt-header-item">${escapeHtml(f.label)}: ${escapeHtml(String(data[f.key]))}</span>`);
+
   let headerHtml = "";
-  if (time || weather) {
-    headerHtml = `
-      <div class="stt-header">
-        ${time ? `<span class="stt-header-item">&#128336; ${escapeHtml(time)}</span>` : ""}
-        ${weather ? `<span class="stt-header-item">&#127780; ${escapeHtml(weather)}</span>` : ""}
-      </div>`;
+  if (headerItems.length > 0) {
+    headerHtml = `<div class="stt-header">${headerItems.join("")}</div>`;
   }
 
   const charactersHtml = characters.map(renderCharacterCard).join("");
@@ -341,7 +435,8 @@ function refreshAllCards() {
   const context = getContext();
   if (!context.chat) return;
 
-  for (let i = 0; i < context.chat.length; i++) {
+  const start = Math.max(0, context.chat.length - 50);
+  for (let i = start; i < context.chat.length; i++) {
     renderCardInMessage(i);
   }
 }
@@ -404,13 +499,11 @@ globalThis.stTrackerGenInterceptor = async function (
       if (!msg.mes) continue;
 
       const regex = new RegExp("```" + identifier + "[\\s\\S]*?```", "g");
-      if (regex.test(msg.mes)) {
-        msg.mes = msg.mes.replace(regex, "").trim();
-        // Clean wrapper divs
-        msg.mes = msg.mes
-          .replace(/<div style="display: none;">\s*\n?\s*<\/div>/g, "")
-          .trim();
-      }
+      msg.mes = msg.mes.replace(regex, "").trim();
+      // Clean wrapper divs
+      msg.mes = msg.mes
+        .replace(/<div style="display: none;">\s*\n?\s*<\/div>/g, "")
+        .trim();
     }
   }
 
@@ -770,21 +863,22 @@ async function readNonStreamResponse(res, format) {
 }
 
 async function generateTrackerWithSecondaryLLM() {
-  const context = getContext();
-  const chat = context.chat;
-  if (!chat || chat.length === 0) return null;
-
   const provider = getSettings("secondaryLLMAPI");
   const model = getSettings("secondaryLLMModel");
-  const messageCount = parseInt(getSettings("secondaryLLMMessageCount")) || 5;
-  const temperature =
-    parseFloat(getSettings("secondaryLLMTemperature")) || 0.7;
-  const streaming = getSettings("secondaryLLMStreaming") !== false;
 
   if (!model && provider !== "sillytavern") {
     toastr.warning("Secondary LLM model not configured.");
     return null;
   }
+
+  const context = getContext();
+  const chat = context.chat;
+  if (!chat || chat.length === 0) return null;
+
+  const messageCount = parseInt(getSettings("secondaryLLMMessageCount")) || 5;
+  const temperature =
+    parseFloat(getSettings("secondaryLLMTemperature")) || 0.7;
+  const streaming = getSettings("secondaryLLMStreaming") !== false;
 
   // Get recent messages
   const recentMessages = chat
@@ -820,6 +914,7 @@ async function generateTrackerWithSecondaryLLM() {
     prompt += "Previous tracker state:\n" + prevTracker + "\n\n";
   }
   prompt += "Recent conversation:\n\n";
+  const stripHTML = getSettings("secondaryLLMStripHTML") !== false;
   recentMessages.forEach((msg) => {
     const role = msg.is_user ? userName : msg.name || charName;
     // Clean out existing tracker blocks
@@ -827,11 +922,15 @@ async function generateTrackerWithSecondaryLLM() {
     content = content
       .replace(new RegExp("```" + identifier + "[\\s\\S]*?```", "g"), "")
       .trim();
+    if (stripHTML) {
+      content = content.replace(/<[^>]*>/g, "");
+    }
     prompt += `${role}: ${content}\n\n`;
   });
 
+  const formatName = (getSettings("trackerFormat") || "json").toUpperCase();
   prompt += `\nIMPORTANT: Format time exactly as "HH:MM:SS; MM/DD/YYYY (Day Name)". Every field must be filled — use reasonable assumptions if not stated.`;
-  prompt += `\nBased on the above conversation, generate ONLY the raw JSON data (without code fences or backticks). Output ONLY the JSON structure directly.`;
+  prompt += `\nBased on the above conversation, generate ONLY the raw ${formatName} data (without code fences or backticks). Output ONLY the ${formatName} structure directly.`;
 
   try {
     log("Calling secondary LLM...");
@@ -842,10 +941,10 @@ async function generateTrackerWithSecondaryLLM() {
       endpoint: getSettings("secondaryLLMEndpoint"),
     });
 
-    // Clean up response
+    // Clean up response (strip code fences for json/yaml)
     text = text
       .trim()
-      .replace(/^```(?:json)?\s*/i, "")
+      .replace(/^```(?:json|yaml)?\s*/i, "")
       .replace(/\s*```\s*$/, "")
       .trim();
 
@@ -863,47 +962,51 @@ async function generateTrackerWithSecondaryLLM() {
 // ============================================================
 function generateFormatContent() {
   const identifier = getSettings("codeBlockIdentifier");
+  const format = getSettings("trackerFormat") || "json";
 
   const context = getContext();
   const userName = context.name1 || "User";
   const charName =
     context.name2 || (context.groupId ? "Characters" : "Character");
 
-  return (
-    "```" +
-    identifier +
-    `
-{
-  "time": "HH:MM:SS; MM/DD/YYYY (Day Name)",
-  "weather": "[CURRENT_WEATHER]",
-  "accent_color": "[HEX_COLOR_THAT_FITS_THE_RP_MOOD_AND_SETTING]",
-  "characters": [
-    {
-      "name": "${charName}",
-      "location": "[SPECIFIC_DETAILED_LOCATION]",
-      "clothing": "[FULL_OUTFIT_INCLUDING_UNDERWEAR]",
-      "position": "[BODY_POSITION_OR_POSE]",
-      "topics": "[SHORT_KEYWORDS]",
-      "present": "[OTHER_CHARACTERS_NEARBY]",
-      "hair": "[HAIR_STYLE_AND_STATE]",
-      "makeup": "[MAKEUP_DESCRIPTION]",
-      "state": "[EMOTIONAL_PHYSICAL_STATE_AND_DRESS_STATE]"
-    },
-    {
-      "name": "${userName}",
-      "location": "[SPECIFIC_DETAILED_LOCATION]",
-      "clothing": "[FULL_OUTFIT_INCLUDING_UNDERWEAR]",
-      "position": "[BODY_POSITION_OR_POSE]",
-      "topics": "[SHORT_KEYWORDS]",
-      "present": "[OTHER_CHARACTERS_NEARBY]",
-      "hair": "[HAIR_STYLE_AND_STATE]",
-      "makeup": "[MAKEUP_DESCRIPTION]",
-      "state": "[EMOTIONAL_PHYSICAL_STATE_AND_DRESS_STATE]"
+  const globalFields = getSettings("globalFields") || DEFAULT_SETTINGS.globalFields;
+  const customFields = getSettings("customFields") || DEFAULT_SETTINGS.customFields;
+
+  if (format === "yaml") {
+    let yaml = "";
+    for (const f of globalFields) {
+      yaml += `${f.key}: "[${f.description}]"\n`;
     }
-  ]
-}
-\`\`\``
-  );
+    yaml += "characters:\n";
+    for (const name of [charName, userName]) {
+      yaml += `  - name: "${name}"\n`;
+      for (const f of customFields) {
+        yaml += `    ${f.key}: "[${f.description}]"\n`;
+      }
+    }
+    return "```" + identifier + "\n" + yaml + "```";
+  }
+
+  // JSON format
+  const globalObj = {};
+  for (const f of globalFields) {
+    globalObj[f.key] = `[${f.description}]`;
+  }
+
+  const charTemplate = {};
+  for (const f of customFields) {
+    charTemplate[f.key] = `[${f.description}]`;
+  }
+
+  const template = {
+    ...globalObj,
+    characters: [
+      { name: charName, ...charTemplate },
+      { name: userName, ...charTemplate },
+    ],
+  };
+
+  return "```" + identifier + "\n" + JSON.stringify(template, null, 2) + "\n```";
 }
 
 function registerMacros() {
@@ -1010,6 +1113,91 @@ async function loadSettingsHtml() {
   attachSettingsListeners();
 }
 
+// ============================================================
+// FIELD EDITOR
+// ============================================================
+function renderFieldEditor(containerId, settingsKey, fieldLabel) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  const fields = getSettings(settingsKey) || DEFAULT_SETTINGS[settingsKey];
+  container.innerHTML = "";
+
+  fields.forEach((field, index) => {
+    const row = document.createElement("div");
+    row.className = "stt-field-editor-row";
+    row.innerHTML = `
+      <input type="text" class="stt-input stt-field-key" value="${escapeHtml(field.key)}" placeholder="key" title="Field key (used in JSON)">
+      <input type="text" class="stt-input stt-field-label" value="${escapeHtml(field.label)}" placeholder="Label" title="Display label">
+      <input type="text" class="stt-input stt-field-desc" value="${escapeHtml(field.description)}" placeholder="Description" title="Placeholder in format template">
+      <div class="stt-field-actions">
+        <button class="stt-field-move-btn" data-dir="up" title="Move up" ${index === 0 ? "disabled" : ""}>&#9650;</button>
+        <button class="stt-field-move-btn" data-dir="down" title="Move down" ${index === fields.length - 1 ? "disabled" : ""}>&#9660;</button>
+        <button class="stt-field-delete" title="Delete">&#10005;</button>
+      </div>`;
+
+    // Move up/down
+    row.querySelectorAll(".stt-field-move-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const dir = btn.dataset.dir;
+        const current = getSettings(settingsKey) || [];
+        const newIndex = dir === "up" ? index - 1 : index + 1;
+        if (newIndex < 0 || newIndex >= current.length) return;
+        [current[index], current[newIndex]] = [current[newIndex], current[index]];
+        setSettings(settingsKey, current);
+        renderFieldEditor(containerId, settingsKey, fieldLabel);
+      });
+    });
+
+    // Delete
+    row.querySelector(".stt-field-delete").addEventListener("click", () => {
+      const current = getSettings(settingsKey) || [];
+      current.splice(index, 1);
+      setSettings(settingsKey, current);
+      renderFieldEditor(containerId, settingsKey, fieldLabel);
+    });
+
+    // Input changes
+    row.querySelectorAll(".stt-input").forEach(input => {
+      input.addEventListener("input", () => {
+        const current = getSettings(settingsKey) || [];
+        const keyInput = row.querySelector(".stt-field-key");
+        const labelInput = row.querySelector(".stt-field-label");
+        const descInput = row.querySelector(".stt-field-desc");
+        current[index] = {
+          key: keyInput.value.trim(),
+          label: labelInput.value.trim(),
+          description: descInput.value.trim(),
+        };
+        setSettings(settingsKey, current);
+      });
+    });
+
+    container.appendChild(row);
+  });
+}
+
+function addFieldToEditor(containerId, settingsKey) {
+  const current = getSettings(settingsKey) || [];
+  // Generate a unique key
+  let newKey = "new_field";
+  let counter = 1;
+  while (current.some(f => f.key === newKey)) {
+    newKey = `new_field_${counter++}`;
+  }
+  current.push({ key: newKey, label: "New Field", description: "DESCRIPTION" });
+  setSettings(settingsKey, current);
+  renderFieldEditor(containerId, settingsKey);
+}
+
+function resetFieldsToDefault() {
+  setSettings("customFields", JSON.parse(JSON.stringify(DEFAULT_SETTINGS.customFields)));
+  setSettings("globalFields", JSON.parse(JSON.stringify(DEFAULT_SETTINGS.globalFields)));
+  renderFieldEditor("sttGlobalFieldsList", "globalFields");
+  renderFieldEditor("sttCharFieldsList", "customFields");
+  toastr.success("Fields reset to defaults.", "ST Tracker");
+}
+
 function populateSettingsUI() {
   const fields = {
     sttIsEnabled: { type: "checkbox", key: "isEnabled" },
@@ -1040,6 +1228,18 @@ function populateSettingsUI() {
 
   // Show/hide custom API fields
   toggleCustomAPIFields();
+
+  // Populate tracker format dropdown
+  const formatSelect = document.getElementById("sttTrackerFormat");
+  if (formatSelect) formatSelect.value = getSettings("trackerFormat") || "json";
+
+  // Populate HTML strip toggle
+  const stripHtml = document.getElementById("sttStripHTML");
+  if (stripHtml) stripHtml.checked = getSettings("secondaryLLMStripHTML") !== false;
+
+  // Populate field editors
+  renderFieldEditor("sttGlobalFieldsList", "globalFields");
+  renderFieldEditor("sttCharFieldsList", "customFields");
 }
 
 function toggleCustomAPIFields() {
@@ -1160,6 +1360,90 @@ function attachSettingsListeners() {
       testBtn.textContent = "Test";
     });
   }
+
+  // Tracker format dropdown
+  const formatSelect = document.getElementById("sttTrackerFormat");
+  if (formatSelect) {
+    formatSelect.addEventListener("change", () => {
+      setSettings("trackerFormat", formatSelect.value);
+    });
+  }
+
+  // HTML strip toggle
+  const stripHtml = document.getElementById("sttStripHTML");
+  if (stripHtml) {
+    stripHtml.addEventListener("change", () => {
+      setSettings("secondaryLLMStripHTML", stripHtml.checked);
+    });
+  }
+
+  // Field editor buttons
+  const addGlobal = document.getElementById("sttAddGlobalField");
+  if (addGlobal) {
+    addGlobal.addEventListener("click", () => addFieldToEditor("sttGlobalFieldsList", "globalFields"));
+  }
+
+  const addChar = document.getElementById("sttAddCharField");
+  if (addChar) {
+    addChar.addEventListener("click", () => addFieldToEditor("sttCharFieldsList", "customFields"));
+  }
+
+  const resetFields = document.getElementById("sttResetFields");
+  if (resetFields) {
+    resetFields.addEventListener("click", resetFieldsToDefault);
+  }
+
+  // Danger Zone buttons
+  const resetAllBtn = document.getElementById("sttResetAllSettings");
+  if (resetAllBtn) {
+    resetAllBtn.addEventListener("click", () => {
+      if (!confirm("Reset ALL ST Tracker settings to defaults? This cannot be undone.")) return;
+      extension_settings[MODULE_NAME] = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
+      saveSettingsDebounced();
+      populateSettingsUI();
+      toastr.success("All settings reset to defaults.", "ST Tracker");
+    });
+  }
+
+  const exportBtn = document.getElementById("sttExportSettings");
+  if (exportBtn) {
+    exportBtn.addEventListener("click", () => {
+      const data = JSON.stringify(extension_settings[MODULE_NAME], null, 2);
+      const blob = new Blob([data], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "st-tracker-settings.json";
+      a.click();
+      URL.revokeObjectURL(url);
+      toastr.success("Settings exported.", "ST Tracker");
+    });
+  }
+
+  const importBtn = document.getElementById("sttImportSettings");
+  if (importBtn) {
+    importBtn.addEventListener("click", () => {
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = ".json";
+      input.addEventListener("change", async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        try {
+          const text = await file.text();
+          const data = JSON.parse(text);
+          if (typeof data !== "object" || data === null) throw new Error("Invalid settings format");
+          extension_settings[MODULE_NAME] = { ...DEFAULT_SETTINGS, ...data };
+          saveSettingsDebounced();
+          populateSettingsUI();
+          toastr.success("Settings imported.", "ST Tracker");
+        } catch (err) {
+          toastr.error(`Import failed: ${err.message}`, "ST Tracker");
+        }
+      });
+      input.click();
+    });
+  }
 }
 
 async function testSecondaryLLMConnection() {
@@ -1216,37 +1500,14 @@ function setupEventHandlers() {
   const eventTypes = context.eventTypes;
 
   if (eventSource && eventTypes) {
-    // When a message is received/rendered
-    eventSource.on(eventTypes.MESSAGE_RECEIVED, (mesId) => {
+    function handleMessageEvent(mesId) {
       if (!getSettings("isEnabled")) return;
-      log(`Message received: ${mesId}`);
+      setTimeout(() => { renderCardInMessage(mesId); hideTrackerBlocks(); }, 100);
+    }
 
-      // Small delay to let DOM update
-      setTimeout(() => {
-        renderCardInMessage(mesId);
-        hideTrackerBlocks();
-      }, 100);
-    });
-
-    // When message is edited/swiped
-    eventSource.on(eventTypes.MESSAGE_UPDATED, (mesId) => {
-      if (!getSettings("isEnabled")) return;
-      log(`Message updated: ${mesId}`);
-      setTimeout(() => {
-        renderCardInMessage(mesId);
-        hideTrackerBlocks();
-      }, 100);
-    });
-
-    // When message is swiped
-    eventSource.on(eventTypes.MESSAGE_SWIPED, (mesId) => {
-      if (!getSettings("isEnabled")) return;
-      log(`Message swiped: ${mesId}`);
-      setTimeout(() => {
-        renderCardInMessage(mesId);
-        hideTrackerBlocks();
-      }, 100);
-    });
+    eventSource.on(eventTypes.MESSAGE_RECEIVED, handleMessageEvent);
+    eventSource.on(eventTypes.MESSAGE_UPDATED, handleMessageEvent);
+    eventSource.on(eventTypes.MESSAGE_SWIPED, handleMessageEvent);
 
     // When chat is changed
     eventSource.on(eventTypes.CHAT_CHANGED, () => {
@@ -1283,8 +1544,14 @@ function setupEventHandlers() {
 
             if (trackerJson) {
               try {
-                // Validate it's valid JSON
-                JSON.parse(trackerJson);
+                // Validate it's valid data (JSON or YAML)
+                let parsed;
+                try {
+                  parsed = JSON.parse(trackerJson);
+                } catch (_) {
+                  parsed = simpleYamlToObject(trackerJson);
+                }
+                if (!parsed || !parsed.characters) throw new Error("Invalid tracker structure");
 
                 const identifier = getSettings("codeBlockIdentifier");
                 const trackerBlock = `\n\n\`\`\`${identifier}\n${trackerJson}\n\`\`\``;
@@ -1300,7 +1567,7 @@ function setupEventHandlers() {
 
                 log("Secondary LLM tracker appended to message");
               } catch (e) {
-                log(`Invalid JSON from secondary LLM: ${e.message}`);
+                log(`Invalid data from secondary LLM: ${e.message}`);
               }
             }
           }
