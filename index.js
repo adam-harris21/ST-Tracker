@@ -74,7 +74,7 @@ const PROVIDER_CONFIG = {
 // DEFAULT SETTINGS
 // ============================================================
 // Bump this when systemPrompt changes to force-update saved settings
-const PROMPT_VERSION = 3;
+const PROMPT_VERSION = 4;
 
 const DEFAULT_SETTINGS = {
   isEnabled: true,
@@ -102,8 +102,10 @@ Output the tracker in this exact format:
    - Format time as "HH:MM:SS; MM/DD/YYYY (Day Name)".
    - Ensure time aligns with the setting (e.g., if in a public venue, choose appropriate hours).
 
-4. **Location Format**: Provide specific, relevant, and detailed locations based on context.
-   - Example: "Food court, second floor near east wing entrance, Madison Square Mall, Los Angeles, CA"
+4. **Location Format**: Location must always include at minimum: specific area/room, building or place name, and city or region. Never use vague single-word locations like "Bedroom" or "Park."
+   - GOOD: "Master bedroom, second floor, Harrington Estate, Upper East Side, Manhattan, NY"
+   - GOOD: "Central fountain area, Westfield Shopping Centre, downtown Melbourne, VIC"
+   - BAD: "Bedroom" / "Mall" / "Kitchen" / "Park" — these are too vague, always expand
 
 5. **Field Guidelines**:
    - "topics": Use one- or two-word keywords relevant to the scene. Avoid long phrases.
