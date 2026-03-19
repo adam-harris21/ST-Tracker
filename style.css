@@ -232,8 +232,6 @@
 
 /* Main collapsible wrapper */
 .stt-main-panel {
-  background: var(--stt-bg);
-  border: 1px solid var(--stt-border);
   border-radius: 14px;
   overflow: hidden;
   margin-bottom: 16px;
@@ -253,14 +251,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 12px 14px;
-  background: rgba(255, 255, 255, 0.03);
-  border-bottom: 1px solid var(--stt-border);
   cursor: pointer;
   user-select: none;
-}
-
-.stt-panel-header:hover {
-  background: rgba(255, 255, 255, 0.05);
 }
 
 .stt-panel-title {
@@ -295,9 +287,7 @@
 
 /* Section headers within panel */
 .stt-section {
-  background: rgba(0, 0, 0, 0.15);
   border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.04);
   overflow: hidden;
 }
 
@@ -311,10 +301,6 @@
   font-size: 0.9em;
   font-weight: 600;
   color: var(--stt-text-dim);
-}
-
-.stt-section-header:hover {
-  background: rgba(255, 255, 255, 0.02);
 }
 
 .stt-section-body {
@@ -338,13 +324,6 @@
   justify-content: space-between;
   align-items: flex-start;
   gap: 12px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-}
-
-.stt-setting-row:last-child {
-  padding-bottom: 0;
-  border-bottom: none;
 }
 
 .stt-setting-info {
