@@ -152,20 +152,21 @@ function initSettings() {
   if (!extension_settings[MODULE_NAME]) {
     extension_settings[MODULE_NAME] = { ...DEFAULT_SETTINGS };
   } else {
-    // Fill in any missing defaults
-    for (const [key, val] of Object.entries(DEFAULT_SETTINGS)) {
-      if (extension_settings[MODULE_NAME][key] === undefined) {
-        extension_settings[MODULE_NAME][key] = val;
-      }
-    }
-
-    // Force-update system prompt when PROMPT_VERSION bumps
+    // Check prompt version BEFORE filling defaults (otherwise promptVersion
+    // gets set to current by the defaults loop and migration never fires)
     const savedVersion = extension_settings[MODULE_NAME].promptVersion || 0;
     if (savedVersion < PROMPT_VERSION) {
       log(`Prompt version ${savedVersion} → ${PROMPT_VERSION}, updating system prompt`);
       extension_settings[MODULE_NAME].systemPrompt = DEFAULT_SETTINGS.systemPrompt;
       extension_settings[MODULE_NAME].promptVersion = PROMPT_VERSION;
       saveSettingsDebounced();
+    }
+
+    // Fill in any missing defaults
+    for (const [key, val] of Object.entries(DEFAULT_SETTINGS)) {
+      if (extension_settings[MODULE_NAME][key] === undefined) {
+        extension_settings[MODULE_NAME][key] = val;
+      }
     }
   }
 }
