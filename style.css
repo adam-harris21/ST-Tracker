@@ -21,8 +21,8 @@
    ============================================================ */
 
 .stt-card-container {
-  margin-top: 12px;
-  border-radius: 14px;
+  margin-top: 10px;
+  border-radius: 12px;
   background: var(--stt-bg);
   border: 1px solid var(--stt-border);
   overflow: hidden;
@@ -33,30 +33,28 @@
 .stt-header {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 10px 16px;
+  gap: 12px;
+  padding: 7px 12px;
   background: rgba(255, 255, 255, 0.03);
   border-bottom: 1px solid var(--stt-border);
 }
 
 .stt-header-item {
-  font-size: 0.85em;
+  font-size: 0.78em;
   color: var(--stt-text-dim);
-  letter-spacing: 0.3px;
+  letter-spacing: 0.2px;
 }
 
-/* Characters grid */
+/* Characters stack */
 .stt-characters {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 0;
 }
 
 /* Individual character card */
 .stt-character-card {
-  flex: 1 1 280px;
-  min-width: 250px;
-  padding: 14px 16px;
+  padding: 8px 12px;
   border-bottom: 1px solid var(--stt-border);
 }
 
@@ -64,90 +62,58 @@
   border-bottom: none;
 }
 
-/* When there are 2+ characters, add a divider between columns */
-.stt-characters > .stt-character-card:not(:only-child) {
-  border-right: 1px solid var(--stt-border);
-}
-
-.stt-characters > .stt-character-card:last-child {
-  border-right: none;
-}
-
-/* Character header */
+/* Character header — slim accent name divider */
 .stt-char-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
-}
-
-.stt-char-avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: var(--stt-accent-dim);
-  color: var(--stt-accent);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  font-size: 0.95em;
-  flex-shrink: 0;
+  margin-bottom: 6px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(139, 92, 246, 0.2);
 }
 
 .stt-char-name {
-  font-weight: 600;
-  font-size: 1em;
-  color: var(--stt-text);
+  font-weight: 700;
+  font-size: 0.8em;
+  color: var(--stt-accent);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
 }
 
-/* Fields */
+/* Fields — 2-column grid */
 .stt-char-fields {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3px;
 }
 
 .stt-field {
   display: flex;
   align-items: baseline;
-  gap: 6px;
-  padding: 4px 8px;
-  border-radius: 6px;
+  gap: 4px;
+  padding: 2px 6px;
+  border-radius: 4px;
   background: var(--stt-field-bg);
-  font-size: 0.85em;
-  line-height: 1.4;
+  font-size: 0.75em;
+  line-height: 1.35;
+  min-width: 0;
 }
 
 .stt-field-icon {
   flex-shrink: 0;
-  width: 18px;
+  width: 14px;
   text-align: center;
-  font-size: 0.9em;
+  font-size: 0.85em;
 }
 
 .stt-field-label {
   flex-shrink: 0;
   color: var(--stt-text-dim);
-  font-weight: 500;
-  min-width: 65px;
+  font-weight: 600;
+  font-size: 0.9em;
 }
 
 .stt-field-value {
   color: var(--stt-text);
   word-break: break-word;
-}
-
-/* Mobile responsive */
-@media (max-width: 600px) {
-  .stt-character-card {
-    flex: 1 1 100%;
-    min-width: unset;
-  }
-
-  .stt-characters > .stt-character-card:not(:only-child) {
-    border-right: none;
-  }
+  min-width: 0;
 }
 
 /* ============================================================

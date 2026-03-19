@@ -87,8 +87,10 @@ Output the tracker in this exact format:
 
 Rules:
 - Track ALL characters present in the scene, including {{user}}
-- Update fields based on what happens in the narrative
-- Keep values concise but descriptive
+- Use the latest message, previous tracker details, and context from recent messages to accurately update the tracker
+- Every field must be filled and complete. If specific information is not provided, make reasonable assumptions based on prior descriptions, logical inferences, or default character details
+- Adjust time in small increments, ideally only a few seconds per update, to reflect realistic scene progression. Avoid large jumps unless a significant time skip (e.g., sleep, travel) is explicitly stated
+- Format time as "HH:MM:SS; MM/DD/YYYY (Day Name)"
 - "present" lists other characters who are nearby/in the scene
 - "state" describes emotional/physical state
 - "topics" tracks current conversation topics
@@ -197,7 +199,6 @@ function renderField(icon, label, value) {
 
 function renderCharacterCard(character) {
   const name = character.name || "Unknown";
-  const initial = name.charAt(0).toUpperCase();
 
   let fieldsHtml = "";
   fieldsHtml += renderField("&#128205;", "Location", character.location);
@@ -212,8 +213,7 @@ function renderCharacterCard(character) {
   return `
     <div class="stt-character-card">
       <div class="stt-char-header">
-        <div class="stt-char-avatar">${escapeHtml(initial)}</div>
-        <div class="stt-char-name">${escapeHtml(name)}</div>
+        <span class="stt-char-name">${escapeHtml(name)}</span>
       </div>
       <div class="stt-char-fields">
         ${fieldsHtml}
