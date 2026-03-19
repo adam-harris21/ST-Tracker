@@ -367,10 +367,7 @@ globalThis.stTrackerGenInterceptor = async function (
 // SECONDARY LLM
 // ============================================================
 function getRequestHeaders() {
-  return {
-    "Content-Type": "application/json",
-    "X-CSRF-Token": SillyTavern.getContext().csrf_token || "",
-  };
+  return SillyTavern.getContext().getRequestHeaders();
 }
 
 async function fetchSecretKey(secretKey, secretId) {
