@@ -373,13 +373,15 @@ function getRequestHeaders() {
   };
 }
 
-async function fetchSecretKey(secretKey) {
+async function fetchSecretKey(secretKey, secretId) {
   if (!secretKey) return null;
   try {
+    const body = { key: secretKey };
+    if (secretId) body.id = secretId;
     const response = await fetch("/api/secrets/find", {
       method: "POST",
       headers: getRequestHeaders(),
-      body: JSON.stringify({ key: secretKey }),
+      body: JSON.stringify(body),
     });
     if (!response.ok) return null;
     const data = await response.json();
@@ -415,43 +417,65 @@ function getConnectionProfiles() {
 
 /**
  * Map a SillyTavern connection profile's API type to our provider format.
- * ST profiles use values like "openai", "claude", "openrouter", "palm", etc.
+ * Profile api values come from ST's chat_completion_sources: "openai", "claude", "openrouter", "makersuite", etc.
  */
 function mapProfileAPIToFormat(profileAPI) {
-  if (!profileAPI) return null;
+  if (!profileAPI) return "openai";
   const api = profileAPI.toLowerCase();
-  if (api.includes("openai") || api === "chat_completion" || api === "openai") return "openai";
-  if (api.includes("claude") || api.includes("anthropic") || api === "claude") return "anthropic";
-  if (api.includes("openrouter") || api === "openrouter") return "openai"; // OpenRouter uses OpenAI format
-  if (api.includes("palm") || api.includes("google") || api.includes("makersuite") || api === "palm") return "google";
-  // Fallback to openai-compatible format
+  if (api === "claude") return "anthropic";
+  if (api === "makersuite" || api === "google") return "google";
+  // Everything else uses OpenAI-compatible format (openai, openrouter, groq, deepseek, mistralai, etc.)
   return "openai";
 }
 
 /**
  * Map a ST profile's API type to the correct secret key name.
+ * Profile api values come from ST's chat_completion_sources: "openai", "claude", "openrouter", "makersuite", etc.
  */
+const API_TO_SECRET = {
+  openai: "api_key_openai",
+  claude: "api_key_claude",
+  openrouter: "api_key_openrouter",
+  makersuite: "api_key_makersuite",
+  google: "api_key_makersuite",
+  vertexai: "api_key_vertexai",
+  mistralai: "api_key_mistralai",
+  cohere: "api_key_cohere",
+  perplexity: "api_key_perplexity",
+  groq: "api_key_groq",
+  ai21: "api_key_ai21",
+  deepseek: "api_key_deepseek",
+  custom: "api_key_custom",
+  chutes: "api_key_chutes",
+};
+
 function mapProfileAPIToSecretKey(profileAPI) {
   if (!profileAPI) return null;
   const api = profileAPI.toLowerCase();
-  if (api.includes("openai") || api === "chat_completion" || api === "openai") return SECRET_KEYS.OPENAI;
-  if (api.includes("claude") || api.includes("anthropic") || api === "claude") return SECRET_KEYS.CLAUDE;
-  if (api.includes("openrouter") || api === "openrouter") return SECRET_KEYS.OPENROUTER;
-  if (api.includes("palm") || api.includes("google") || api.includes("makersuite") || api === "palm") return SECRET_KEYS.MAKERSUITE;
-  return null;
+  return API_TO_SECRET[api] || null;
 }
 
 /**
  * Get the default API endpoint for a profile's API type.
+ * Uses exact ST chat_completion_sources values.
  */
+const API_TO_ENDPOINT = {
+  openai: "https://api.openai.com/v1/chat/completions",
+  claude: "https://api.anthropic.com/v1/messages",
+  openrouter: "https://openrouter.ai/api/v1/chat/completions",
+  makersuite: "https://generativelanguage.googleapis.com/v1beta/models",
+  google: "https://generativelanguage.googleapis.com/v1beta/models",
+  groq: "https://api.groq.com/openai/v1/chat/completions",
+  deepseek: "https://api.deepseek.com/v1/chat/completions",
+  mistralai: "https://api.mistral.ai/v1/chat/completions",
+  cohere: "https://api.cohere.com/v2/chat",
+  perplexity: "https://api.perplexity.ai/chat/completions",
+  chutes: "https://llm.chutes.ai/v1/chat/completions",
+};
+
 function getDefaultEndpointForAPI(profileAPI) {
   if (!profileAPI) return null;
-  const api = profileAPI.toLowerCase();
-  if (api.includes("openai") && !api.includes("router")) return "https://api.openai.com/v1/chat/completions";
-  if (api.includes("claude") || api.includes("anthropic")) return "https://api.anthropic.com/v1/messages";
-  if (api.includes("openrouter")) return "https://openrouter.ai/api/v1/chat/completions";
-  if (api.includes("palm") || api.includes("google") || api.includes("makersuite")) return "https://generativelanguage.googleapis.com/v1beta/models";
-  return null;
+  return API_TO_ENDPOINT[profileAPI.toLowerCase()] || null;
 }
 
 function populateProfileDropdown() {
@@ -502,22 +526,22 @@ async function callSecondaryLLM(prompt, provider, model, opts = {}) {
       const profileSecretId = profile["secret-id"] || profile["secret_id"] || "";
       const format = mapProfileAPIToFormat(profileAPI);
 
-      log(`Using profile "${profile.name}" (api: ${profileAPI}, model: ${profileModel}) — READ-ONLY, no connection switching`);
+      log(`Using profile "${profile.name}" (api: ${profileAPI}, model: ${profileModel}, secret-id: ${profileSecretId ? "present" : "none"}, api-url: ${profileUrl || "default"}) — READ-ONLY, no connection switching`);
 
-      // Get API key from the profile's secret-id
+      // Get API key: need the secret key name (e.g. "api_key_openai") + the profile's secret UUID
+      const secretKeyName = mapProfileAPIToSecretKey(profileAPI);
       let profileApiKey = null;
-      if (profileSecretId) {
-        profileApiKey = await fetchSecretKey(profileSecretId);
+
+      if (secretKeyName && profileSecretId) {
+        // Fetch the specific secret by key name + UUID
+        profileApiKey = await fetchSecretKey(secretKeyName, profileSecretId);
+      }
+      if (!profileApiKey && secretKeyName) {
+        // Fallback: fetch the active secret for this API type (no specific ID)
+        profileApiKey = await fetchSecretKey(secretKeyName);
       }
       if (!profileApiKey) {
-        // Try the default secret key for this API type
-        const defaultSecretKey = mapProfileAPIToSecretKey(profileAPI);
-        if (defaultSecretKey) {
-          profileApiKey = await fetchSecretKey(defaultSecretKey);
-        }
-      }
-      if (!profileApiKey) {
-        throw new Error(`No API key found for profile "${profile.name}". Check SillyTavern API settings.`);
+        throw new Error(`No API key found for profile "${profile.name}" (api: ${profileAPI}). Check SillyTavern API settings.`);
       }
 
       // Determine endpoint
