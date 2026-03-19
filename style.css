@@ -3,12 +3,12 @@
    ============================================================ */
 
 :root {
-  --stt-bg: rgba(25, 25, 30, 0.85);
-  --stt-border: rgba(255, 255, 255, 0.08);
-  --stt-text: rgba(255, 255, 255, 0.9);
-  --stt-text-dim: rgba(255, 255, 255, 0.5);
-  --stt-accent: #8b5cf6;
-  --stt-accent-dim: rgba(139, 92, 246, 0.15);
+  --stt-bg: rgba(18, 18, 24, 0.92);
+  --stt-border: rgba(255, 255, 255, 0.06);
+  --stt-text: rgba(255, 255, 255, 0.88);
+  --stt-text-dim: rgba(255, 255, 255, 0.42);
+  --stt-accent: #a78bfa;
+  --stt-accent-dim: rgba(167, 139, 250, 0.12);
   --stt-card-bg: rgba(255, 255, 255, 0.03);
   --stt-field-bg: rgba(255, 255, 255, 0.02);
   --stt-input-bg: rgba(0, 0, 0, 0.25);
@@ -22,8 +22,10 @@
 
 .stt-card-container {
   margin-top: 10px;
-  border-radius: 12px;
+  border-radius: 10px;
   background: var(--stt-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--stt-border);
   overflow: hidden;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -33,15 +35,17 @@
 .stt-header {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 7px 12px;
-  background: rgba(255, 255, 255, 0.03);
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  padding: 8px 14px;
+  background: linear-gradient(135deg, rgba(167, 139, 250, 0.06), rgba(255, 255, 255, 0.02));
   border-bottom: 1px solid var(--stt-border);
 }
 
 .stt-header-item {
-  font-size: 0.78em;
-  color: var(--stt-text-dim);
+  font-size: 0.75em;
+  color: rgba(255, 255, 255, 0.55);
+  font-weight: 500;
   letter-spacing: 0.2px;
 }
 
@@ -49,69 +53,59 @@
 .stt-characters {
   display: flex;
   flex-direction: column;
-  gap: 0;
 }
 
-/* Individual character card */
+/* Individual character section */
 .stt-character-card {
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--stt-border);
+  padding: 10px 14px;
 }
 
-.stt-character-card:last-child {
-  border-bottom: none;
+.stt-character-card + .stt-character-card {
+  border-top: 1px solid var(--stt-border);
 }
 
-/* Character header — slim accent name divider */
+/* Character name — minimal accent label */
 .stt-char-header {
-  margin-bottom: 6px;
-  padding-bottom: 4px;
-  border-bottom: 1px solid rgba(139, 92, 246, 0.2);
+  margin-bottom: 7px;
 }
 
 .stt-char-name {
   font-weight: 700;
-  font-size: 0.8em;
+  font-size: 0.68em;
   color: var(--stt-accent);
   text-transform: uppercase;
-  letter-spacing: 0.6px;
+  letter-spacing: 1.2px;
 }
 
-/* Fields — 2-column grid */
+/* Fields — 2-column flowing grid, no boxes */
 .stt-char-fields {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 3px;
+  gap: 2px 14px;
 }
 
 .stt-field {
   display: flex;
   align-items: baseline;
-  gap: 4px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  background: var(--stt-field-bg);
-  font-size: 0.75em;
-  line-height: 1.35;
+  gap: 5px;
+  padding: 3px 0;
+  font-size: 0.76em;
+  line-height: 1.4;
   min-width: 0;
 }
 
 .stt-field-icon {
   flex-shrink: 0;
-  width: 14px;
-  text-align: center;
-  font-size: 0.85em;
+  font-size: 0.8em;
+  opacity: 0.7;
 }
 
 .stt-field-label {
-  flex-shrink: 0;
-  color: var(--stt-text-dim);
-  font-weight: 600;
-  font-size: 0.9em;
+  display: none;
 }
 
 .stt-field-value {
-  color: var(--stt-text);
+  color: rgba(255, 255, 255, 0.78);
   word-break: break-word;
   min-width: 0;
 }

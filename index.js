@@ -192,7 +192,6 @@ function renderField(icon, label, value) {
   return `
     <div class="stt-field">
       <span class="stt-field-icon">${icon}</span>
-      <span class="stt-field-label">${escapeHtml(label)}</span>
       <span class="stt-field-value">${escapeHtml(String(value))}</span>
     </div>`;
 }
@@ -773,26 +772,10 @@ async function generateTrackerWithSecondaryLLM() {
     prompt += `${role}: ${content}\n\n`;
   });
 
+  prompt += `\nIMPORTANT: Format time exactly as "HH:MM:SS; MM/DD/YYYY (Day Name)". Every field must be filled — use reasonable assumptions if not stated.`;
   prompt += `\nBased on the above conversation, generate ONLY the raw JSON data (without code fences or backticks). Output ONLY the JSON structure directly.`;
 
   try {
-    // Show toast so user knows what's happening
-    let toastLabel;
-    if (provider === "sillytavern") {
-      const profileId = getSettings("secondaryLLMProfile");
-      if (profileId) {
-        const profiles = getConnectionProfiles();
-        const profile = profiles.find((p) => p.id === profileId);
-        toastLabel = `Profile: ${profile?.name || profileId} | ${model || profile?.model || "(profile model)"}`;
-      } else {
-        toastLabel = `ST Proxy | ${model || "(current model)"}`;
-      }
-    } else {
-      const providerName = PROVIDER_CONFIG[provider]?.name || provider;
-      toastLabel = `${providerName} | ${model || "(no model)"}`;
-    }
-    toastr.info(toastLabel, "ST Tracker — Generating...", { timeOut: 3000 });
-
     log("Calling secondary LLM...");
     let text = await callSecondaryLLM(prompt, provider, model, {
       temperature,
@@ -809,7 +792,6 @@ async function generateTrackerWithSecondaryLLM() {
       .trim();
 
     log("Secondary LLM response received");
-    toastr.success("Tracker data generated!", "ST Tracker", { timeOut: 2000 });
     return text;
   } catch (error) {
     log(`Secondary LLM error: ${error.message}`);
@@ -834,7 +816,7 @@ function generateFormatContent() {
     identifier +
     `
 {
-  "time": "[CURRENT_DATE_AND_TIME]",
+  "time": "HH:MM:SS; MM/DD/YYYY (Day Name)",
   "weather": "[CURRENT_WEATHER]",
   "characters": [
     {
