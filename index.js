@@ -73,11 +73,15 @@ const PROVIDER_CONFIG = {
 // ============================================================
 // DEFAULT SETTINGS
 // ============================================================
+// Bump this when systemPrompt changes to force-update saved settings
+const PROMPT_VERSION = 2;
+
 const DEFAULT_SETTINGS = {
   isEnabled: true,
   codeBlockIdentifier: "tracker",
   hideTrackerBlocks: true,
   retainTrackerCount: 3,
+  promptVersion: PROMPT_VERSION,
 
   // Prompt
   systemPrompt: `You are a Scene Tracker Assistant, tasked with providing clear, consistent, and structured updates to a scene tracker for a roleplay. Use the latest message, previous tracker details, and context from recent messages to accurately update the tracker. Your response must ensure that each field is filled and complete.
@@ -153,6 +157,15 @@ function initSettings() {
       if (extension_settings[MODULE_NAME][key] === undefined) {
         extension_settings[MODULE_NAME][key] = val;
       }
+    }
+
+    // Force-update system prompt when PROMPT_VERSION bumps
+    const savedVersion = extension_settings[MODULE_NAME].promptVersion || 0;
+    if (savedVersion < PROMPT_VERSION) {
+      log(`Prompt version ${savedVersion} → ${PROMPT_VERSION}, updating system prompt`);
+      extension_settings[MODULE_NAME].systemPrompt = DEFAULT_SETTINGS.systemPrompt;
+      extension_settings[MODULE_NAME].promptVersion = PROMPT_VERSION;
+      saveSettingsDebounced();
     }
   }
 }
@@ -867,25 +880,25 @@ function generateFormatContent() {
   "characters": [
     {
       "name": "${charName}",
-      "location": "[WHERE_THEY_ARE]",
-      "clothing": "[WHAT_THEY_ARE_WEARING]",
+      "location": "[SPECIFIC_DETAILED_LOCATION]",
+      "clothing": "[FULL_OUTFIT_INCLUDING_UNDERWEAR]",
       "position": "[BODY_POSITION_OR_POSE]",
-      "topics": "[CURRENT_CONVERSATION_TOPICS]",
+      "topics": "[SHORT_KEYWORDS]",
       "present": "[OTHER_CHARACTERS_NEARBY]",
       "hair": "[HAIR_STYLE_AND_STATE]",
       "makeup": "[MAKEUP_DESCRIPTION]",
-      "state": "[EMOTIONAL_AND_PHYSICAL_STATE]"
+      "state": "[EMOTIONAL_PHYSICAL_STATE_AND_DRESS_STATE]"
     },
     {
       "name": "${userName}",
-      "location": "[WHERE_THEY_ARE]",
-      "clothing": "[WHAT_THEY_ARE_WEARING]",
+      "location": "[SPECIFIC_DETAILED_LOCATION]",
+      "clothing": "[FULL_OUTFIT_INCLUDING_UNDERWEAR]",
       "position": "[BODY_POSITION_OR_POSE]",
-      "topics": "[CURRENT_CONVERSATION_TOPICS]",
+      "topics": "[SHORT_KEYWORDS]",
       "present": "[OTHER_CHARACTERS_NEARBY]",
       "hair": "[HAIR_STYLE_AND_STATE]",
       "makeup": "[MAKEUP_DESCRIPTION]",
-      "state": "[EMOTIONAL_AND_PHYSICAL_STATE]"
+      "state": "[EMOTIONAL_PHYSICAL_STATE_AND_DRESS_STATE]"
     }
   ]
 }
@@ -1121,6 +1134,18 @@ function attachSettingsListeners() {
     profileSelect.addEventListener("change", () => {
       setSettings("secondaryLLMProfile", profileSelect.value);
       toggleCustomAPIFields(); // Update model placeholder text
+    });
+  }
+
+  // Reset prompt button
+  const resetBtn = document.getElementById("sttResetPrompt");
+  if (resetBtn) {
+    resetBtn.addEventListener("click", () => {
+      const textarea = document.getElementById("sttSystemPrompt");
+      if (textarea) textarea.value = DEFAULT_SETTINGS.systemPrompt;
+      setSettings("systemPrompt", DEFAULT_SETTINGS.systemPrompt);
+      setSettings("promptVersion", PROMPT_VERSION);
+      toastr.success("System prompt reset to default.", "ST Tracker");
     });
   }
 
