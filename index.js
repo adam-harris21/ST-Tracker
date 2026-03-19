@@ -80,23 +80,40 @@ const DEFAULT_SETTINGS = {
   retainTrackerCount: 3,
 
   // Prompt
-  systemPrompt: `You are a character state tracker. After every response, output a tracker block that tracks the current state of all characters in the scene.
+  systemPrompt: `You are a Scene Tracker Assistant, tasked with providing clear, consistent, and structured updates to a scene tracker for a roleplay. Use the latest message, previous tracker details, and context from recent messages to accurately update the tracker. Your response must ensure that each field is filled and complete.
 
 Output the tracker in this exact format:
 {{stt_format}}
 
-Rules:
-- Track ALL characters present in the scene, including {{user}}
-- Use the latest message, previous tracker details, and context from recent messages to accurately update the tracker
-- Every field must be filled and complete. If specific information is not provided, make reasonable assumptions based on prior descriptions, logical inferences, or default character details
-- Adjust time in small increments, ideally only a few seconds per update, to reflect realistic scene progression. Avoid large jumps unless a significant time skip (e.g., sleep, travel) is explicitly stated
-- Format time as "HH:MM:SS; MM/DD/YYYY (Day Name)"
-- "present" lists other characters who are nearby/in the scene
-- "state" describes emotional/physical state
-- "topics" tracks current conversation topics
-- Time and weather are global (shared across all characters)
-- "accent_color" is a hex color (e.g. "#6a5acd") representing the visual theme of the scene. Choose based on the character's personality, the current mood/atmosphere, and setting. Examples: warm amber (#d4763a) for cozy/romantic scenes, cool blue (#4a90d9) for calm/ocean settings, deep red (#c0392b) for tense/passionate moments, forest green (#2d8659) for nature/outdoor, dark purple (#6a5acd) for mysterious/night scenes. Pick ONE color that best represents the overall vibe. This determines the tracker card's color scheme
-- Always place the tracker block at the END of your response`,
+### Key Instructions:
+
+1. **Track ALL characters present in the scene, including {{user}}.**
+
+2. **Default Assumptions for Missing Information**:
+   - If no new details are provided for a character, assume reasonable defaults based on prior descriptions, logical inferences, or default character details.
+   - **Clothing**: Describe the complete outfit for each character with specific details for color, fabric, and style (e.g., "fitted black leather jacket with silver studs on the collar"). Underwear must always be included. If underwear is intentionally missing, specify clearly (e.g., "No bra", "No panties"). If the character is undressed, list the entire outfit they had on.
+
+3. **Incremental Time Progression**:
+   - Adjust time in small increments, ideally only a few seconds per update, to reflect realistic scene progression. Avoid large jumps unless a significant time skip (e.g., sleep, travel) is explicitly stated.
+   - Format time as "HH:MM:SS; MM/DD/YYYY (Day Name)".
+   - Ensure time aligns with the setting (e.g., if in a public venue, choose appropriate hours).
+
+4. **Location Format**: Provide specific, relevant, and detailed locations based on context.
+   - Example: "Food court, second floor near east wing entrance, Madison Square Mall, Los Angeles, CA"
+
+5. **Field Guidelines**:
+   - "topics": Use one- or two-word keywords relevant to the scene. Avoid long phrases.
+   - "present": List other characters who are nearby or in the scene.
+   - "state": Describe emotional and physical state, including how put-together or disheveled the character appears and any removed clothing.
+   - "position": Current body position or pose.
+   - Time and weather are global (shared across all characters).
+
+6. **accent_color**: A hex color (e.g. "#6a5acd") representing the visual theme of the scene. Choose based on the character's personality, mood/atmosphere, and setting. Examples: warm amber (#d4763a) for cozy/romantic, cool blue (#4a90d9) for calm/ocean, deep red (#c0392b) for tense/passionate, forest green (#2d8659) for nature/outdoor, dark purple (#6a5acd) for mysterious/night. Pick ONE color that best represents the overall vibe.
+
+7. **General Rules**:
+   - Treat each update as a standalone, complete entry. Respond with the full tracker every time, even for minor updates.
+   - Avoid redundancies — use only details provided or logically inferred.
+   - Always place the tracker block at the END of your response.`,
 
   // Secondary LLM
   useSecondaryLLM: false,
@@ -261,9 +278,15 @@ function renderTrackerCard(data) {
 
   return `
     <div class="${CONTAINER_CLASS}"${inlineStyle}>
-      ${headerHtml}
-      <div class="stt-characters">
-        ${charactersHtml}
+      <div class="stt-toggle-bar">
+        <span class="stt-toggle-label">Scene Tracker</span>
+        <span class="stt-toggle-chevron">&#9660;</span>
+      </div>
+      <div class="stt-card-body">
+        ${headerHtml}
+        <div class="stt-characters">
+          ${charactersHtml}
+        </div>
       </div>
     </div>`;
 }
@@ -1153,6 +1176,14 @@ function getExtensionDir() {
 // EVENT HANDLERS
 // ============================================================
 function setupEventHandlers() {
+  // Toggle card collapse on toggle bar click
+  document.addEventListener("click", (e) => {
+    const bar = e.target.closest(".stt-toggle-bar");
+    if (!bar) return;
+    const card = bar.closest(`.${CONTAINER_CLASS}`);
+    if (card) card.classList.toggle("stt-collapsed");
+  });
+
   const context = getContext();
 
   // After message is rendered

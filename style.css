@@ -42,6 +42,45 @@
   background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.12), transparent);
 }
 
+/* Toggle bar */
+.stt-toggle-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 14px;
+  cursor: pointer;
+  user-select: none;
+  background: rgba(0, 0, 0, 0.2);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.stt-toggle-label {
+  font-size: 0.65em;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.stt-toggle-chevron {
+  font-size: 0.55em;
+  color: rgba(255, 255, 255, 0.4);
+  transition: transform 0.2s ease;
+}
+
+/* Collapsed state */
+.stt-collapsed .stt-card-body {
+  display: none;
+}
+
+.stt-collapsed .stt-toggle-chevron {
+  transform: rotate(-90deg);
+}
+
+.stt-collapsed .stt-toggle-bar {
+  border-bottom: none;
+}
+
 /* Header (time & weather) */
 .stt-header {
   padding: 8px 14px;
