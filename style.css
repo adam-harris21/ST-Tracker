@@ -232,17 +232,35 @@
 
 /* Main collapsible wrapper */
 .stt-main-panel {
+  position: relative;
   background: color-mix(in srgb, var(--stt-accent) 7%, transparent);
   backdrop-filter: blur(40px) saturate(1.4);
   -webkit-backdrop-filter: blur(40px) saturate(1.4);
   border: 1px solid color-mix(in srgb, var(--stt-accent) 12%, transparent);
-  border-radius: 14px;
+  border-radius: 20px;
   box-shadow:
     0 2px 4px rgba(0, 0, 0, 0.4),
     0 8px 32px rgba(0, 0, 0, 0.25),
     0 0 16px color-mix(in srgb, var(--stt-accent) 8%, transparent);
   overflow: hidden;
   margin-bottom: 16px;
+  color: #fff;
+}
+
+.stt-main-panel::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--stt-accent) 12%, transparent),
+    transparent 60%
+  );
+  pointer-events: none;
+  z-index: 0;
 }
 
 .stt-main-panel.collapsed .stt-panel-body {
@@ -255,6 +273,8 @@
 
 /* Panel header */
 .stt-panel-header {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -287,6 +307,8 @@
 
 /* Panel body */
 .stt-panel-body {
+  position: relative;
+  z-index: 1;
   padding: 16px;
   display: flex;
   flex-direction: column;
