@@ -691,6 +691,15 @@ async function generateTrackerWithSecondaryLLM() {
   prompt += `\nBased on the above conversation, generate ONLY the raw JSON data (without code fences or backticks). Output ONLY the JSON structure directly.`;
 
   try {
+    // Show toast so user knows what's happening
+    const profileName = targetProfile || getCurrentProfileName() || "Current";
+    const modelName = model || "(profile default)";
+    if (provider === "sillytavern") {
+      toastr.info(`Profile: ${profileName} | Model: ${modelName}`, "ST Tracker — Generating...", { timeOut: 3000 });
+    } else {
+      toastr.info(`Provider: ${PROVIDER_CONFIG[provider]?.name} | Model: ${modelName}`, "ST Tracker — Generating...", { timeOut: 3000 });
+    }
+
     log("Calling secondary LLM...");
     let text = await callSecondaryLLM(prompt, provider, model, {
       temperature,
@@ -707,6 +716,7 @@ async function generateTrackerWithSecondaryLLM() {
       .trim();
 
     log("Secondary LLM response received");
+    toastr.success("Tracker data generated!", "ST Tracker", { timeOut: 2000 });
     return text;
   } catch (error) {
     log(`Secondary LLM error: ${error.message}`);
