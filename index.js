@@ -374,7 +374,11 @@ function renderTrackerCard(data) {
   const globalFields = getSettings("globalFields") || DEFAULT_SETTINGS.globalFields;
   const headerItems = globalFields
     .filter(f => f.key !== "accent_color" && data[f.key])
-    .map(f => `<span class="stt-header-item">${escapeHtml(f.label)}: ${escapeHtml(String(data[f.key]))}</span>`);
+    .map(f => {
+      const HEADER_ICONS = { time: "🕐", weather: "🌤", location: "📍", season: "🍂", date: "📅" };
+      const icon = HEADER_ICONS[f.key] ? `<span class="stt-header-icon">${HEADER_ICONS[f.key]}</span>` : "";
+      return `<span class="stt-header-item">${icon}${escapeHtml(f.label)}: ${escapeHtml(String(data[f.key]))}</span>`;
+    });
 
   let headerHtml = "";
   if (headerItems.length > 0) {

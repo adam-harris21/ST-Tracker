@@ -109,31 +109,31 @@
 .stt-header {
   position: relative;
   z-index: 1;
-  padding: 10px 14px;
-  background: color-mix(in srgb, var(--stt-accent) 6%, transparent);
-  border-bottom: 1px solid;
-  border-image: linear-gradient(90deg, transparent, color-mix(in srgb, var(--stt-accent) 15%, transparent), transparent) 1;
+  padding: 6px 10px 2px;
   display: flex;
   flex-wrap: wrap;
-  gap: 6px 10px;
-  margin-bottom: 2px;
+  gap: 6px 8px;
   align-items: center;
   justify-content: center;
 }
 
 .stt-header-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   font-size: 0.68em;
   color: color-mix(in srgb, var(--stt-accent) 30%, rgba(255, 255, 255, 0.7));
   font-weight: 500;
-  background: color-mix(in srgb, var(--stt-accent) 12%, transparent);
-  padding: 4px 12px;
+  background: color-mix(in srgb, var(--stt-accent) 8%, transparent);
+  padding: 4px 11px;
   border-radius: 20px;
-  border: 1px solid color-mix(in srgb, var(--stt-accent) 15%, transparent);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  border: 1px solid color-mix(in srgb, var(--stt-accent) 10%, transparent);
 }
 
-.stt-header-item + .stt-header-item::before {
-  content: none;
+.stt-header-icon {
+  font-size: 1.1em;
+  line-height: 1;
+  opacity: 0.7;
 }
 
 /* Characters stack */
