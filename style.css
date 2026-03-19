@@ -271,16 +271,22 @@
   transform: rotate(-90deg);
 }
 
-/* Panel header */
+/* Panel header — matches card's .stt-toggle-bar */
 .stt-panel-header {
   position: relative;
   z-index: 1;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 14px;
+  padding: 12px 16px;
   cursor: pointer;
   user-select: none;
+  background: color-mix(in srgb, var(--stt-accent) 15%, transparent);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid transparent;
+  border-image: linear-gradient(90deg, transparent, color-mix(in srgb, var(--stt-accent) 25%, transparent), transparent) 1;
 }
 
 .stt-panel-title {
@@ -321,6 +327,11 @@
   overflow: hidden;
 }
 
+.stt-section + .stt-section {
+  border-top: 1px solid transparent;
+  border-image: linear-gradient(90deg, transparent, color-mix(in srgb, var(--stt-accent) 12%, transparent), transparent) 1;
+}
+
 .stt-section-header {
   display: flex;
   align-items: center;
@@ -330,7 +341,10 @@
   user-select: none;
   font-size: 0.9em;
   font-weight: 600;
-  color: var(--stt-text-dim);
+  color: var(--stt-accent);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  font-size: 0.75em;
 }
 
 .stt-section-body {
