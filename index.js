@@ -121,11 +121,9 @@ Output the tracker in this exact format:
 
   // Custom fields
   customFields: [
-    { key: "location", label: "Location", description: "SPECIFIC_DETAILED_LOCATION" },
     { key: "clothing", label: "Clothing", description: "FULL_OUTFIT_INCLUDING_UNDERWEAR" },
     { key: "position", label: "Position", description: "BODY_POSITION_OR_POSE" },
     { key: "topics", label: "Topics", description: "SHORT_KEYWORDS" },
-    { key: "present", label: "Present", description: "OTHER_CHARACTERS_NEARBY" },
     { key: "hair", label: "Hair", description: "HAIR_STYLE_AND_STATE" },
     { key: "makeup", label: "Makeup", description: "DESCRIBE_FACE_APPEARANCE_SKIN_AND_MAKEUP_IF_ANY" },
     { key: "state", label: "State", description: "EMOTIONAL_PHYSICAL_STATE_AND_DRESS_STATE" },
@@ -133,6 +131,7 @@ Output the tracker in this exact format:
   globalFields: [
     { key: "time", label: "Time", description: "HH:MM:SS; MM/DD/YYYY (Day Name)" },
     { key: "weather", label: "Weather", description: "CURRENT_WEATHER" },
+    { key: "location", label: "Location", description: "SPECIFIC_DETAILED_LOCATION" },
     { key: "accent_color", label: "Accent Color", description: "HEX_COLOR_THAT_FITS_THE_RP_MOOD_AND_SETTING" },
   ],
 
