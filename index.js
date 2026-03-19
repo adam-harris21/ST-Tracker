@@ -824,16 +824,32 @@ async function generateTrackerWithSecondaryLLM() {
 function generateFormatContent() {
   const identifier = getSettings("codeBlockIdentifier");
 
+  const context = getContext();
+  const userName = context.name1 || "User";
+  const charName =
+    context.name2 || (context.groupId ? "Characters" : "Character");
+
   return (
     "```" +
     identifier +
     `
 {
-  "time": "[CURRENT_TIME]",
+  "time": "[CURRENT_DATE_AND_TIME]",
   "weather": "[CURRENT_WEATHER]",
   "characters": [
     {
-      "name": "[CHARACTER_NAME]",
+      "name": "${charName}",
+      "location": "[WHERE_THEY_ARE]",
+      "clothing": "[WHAT_THEY_ARE_WEARING]",
+      "position": "[BODY_POSITION_OR_POSE]",
+      "topics": "[CURRENT_CONVERSATION_TOPICS]",
+      "present": "[OTHER_CHARACTERS_NEARBY]",
+      "hair": "[HAIR_STYLE_AND_STATE]",
+      "makeup": "[MAKEUP_DESCRIPTION]",
+      "state": "[EMOTIONAL_AND_PHYSICAL_STATE]"
+    },
+    {
+      "name": "${userName}",
       "location": "[WHERE_THEY_ARE]",
       "clothing": "[WHAT_THEY_ARE_WEARING]",
       "position": "[BODY_POSITION_OR_POSE]",
