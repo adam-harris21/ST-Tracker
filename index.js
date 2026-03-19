@@ -95,7 +95,7 @@ Rules:
 - "state" describes emotional/physical state
 - "topics" tracks current conversation topics
 - Time and weather are global (shared across all characters)
-- "accent_color" is a hex color (e.g. "#a78bfa") that matches the mood, setting, or character personality of the current RP scene. Choose a color that fits the atmosphere — warm tones for romance, cool blues for calm, reds for tension, dark purples for mystery, etc. This colors the tracker card UI
+- "accent_color" is a hex color (e.g. "#6a5acd") representing the visual theme of the scene. Choose based on the character's personality, the current mood/atmosphere, and setting. Examples: warm amber (#d4763a) for cozy/romantic scenes, cool blue (#4a90d9) for calm/ocean settings, deep red (#c0392b) for tense/passionate moments, forest green (#2d8659) for nature/outdoor, dark purple (#6a5acd) for mysterious/night scenes. Pick ONE color that best represents the overall vibe. This determines the tracker card's color scheme
 - Always place the tracker block at the END of your response`,
 
   // Secondary LLM
@@ -188,11 +188,21 @@ function escapeHtml(str) {
     .replace(/"/g, "&quot;");
 }
 
+function darkenColor(hex) {
+  hex = hex.replace('#', '');
+  if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
+  const r = Math.round(parseInt(hex.substring(0, 2), 16) * 0.7);
+  const g = Math.round(parseInt(hex.substring(2, 4), 16) * 0.7);
+  const b = Math.round(parseInt(hex.substring(4, 6), 16) * 0.7);
+  return `#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${b.toString(16).padStart(2,'0')}`;
+}
+
 function renderField(icon, label, value) {
   if (!value && value !== 0) return "";
   return `
     <div class="stt-field">
       <span class="stt-field-icon">${icon}</span>
+      <span class="stt-field-label">${label}</span>
       <span class="stt-field-value">${escapeHtml(String(value))}</span>
     </div>`;
 }
@@ -234,7 +244,8 @@ function renderTrackerCard(data) {
   // Build inline style to override accent color if the LLM provided one
   let inlineStyle = "";
   if (accentColor && /^#[0-9a-fA-F]{3,8}$/.test(accentColor)) {
-    inlineStyle = ` style="--stt-accent: ${accentColor}; --stt-accent-dim: ${accentColor}18; --stt-accent-bg: ${accentColor}22; --stt-accent-border: ${accentColor}30;"`;
+    const darker = darkenColor(accentColor);
+    inlineStyle = ` style="--stt-accent: ${accentColor}; background: linear-gradient(145deg, ${accentColor}, ${darker} 60%);"`;
   }
 
   let headerHtml = "";
