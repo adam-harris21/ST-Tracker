@@ -62,7 +62,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 16px;
+  padding: 12px 16px;
   cursor: pointer;
   user-select: none;
   background: color-mix(in srgb, var(--stt-accent) 15%, transparent);
@@ -87,6 +87,11 @@
   transition: transform 0.2s ease;
 }
 
+/* Card body — inset from card edges */
+.stt-card-body {
+  padding: 4px 6px 6px;
+}
+
 /* Collapsed state */
 .stt-collapsed .stt-card-body {
   display: none;
@@ -104,13 +109,14 @@
 .stt-header {
   position: relative;
   z-index: 1;
-  padding: 10px 16px;
+  padding: 10px 14px;
   background: color-mix(in srgb, var(--stt-accent) 6%, transparent);
   border-bottom: 1px solid;
   border-image: linear-gradient(90deg, transparent, color-mix(in srgb, var(--stt-accent) 15%, transparent), transparent) 1;
   display: flex;
   flex-wrap: wrap;
-  gap: 6px 8px;
+  gap: 6px 10px;
+  margin-bottom: 2px;
   align-items: center;
   justify-content: center;
 }
@@ -120,7 +126,7 @@
   color: color-mix(in srgb, var(--stt-accent) 30%, rgba(255, 255, 255, 0.7));
   font-weight: 500;
   background: color-mix(in srgb, var(--stt-accent) 12%, transparent);
-  padding: 3px 10px;
+  padding: 4px 12px;
   border-radius: 20px;
   border: 1px solid color-mix(in srgb, var(--stt-accent) 15%, transparent);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
@@ -140,7 +146,7 @@
 
 /* Individual character section */
 .stt-character-card {
-  padding: 10px 16px;
+  padding: 12px 14px;
 }
 
 .stt-character-card + .stt-character-card {
@@ -153,7 +159,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .stt-char-header::before {
@@ -177,14 +183,14 @@
 .stt-char-fields {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  gap: 10px;
 }
 
 .stt-field {
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  padding: 8px 12px;
+  gap: 4px;
+  padding: 10px 14px;
   background: color-mix(in srgb, var(--stt-accent) 5%, rgba(0, 0, 0, 0.15));
   border: 1px solid color-mix(in srgb, var(--stt-accent) 6%, transparent);
   border-left: 2px solid color-mix(in srgb, var(--stt-accent) 30%, transparent);
