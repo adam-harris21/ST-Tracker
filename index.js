@@ -74,7 +74,7 @@ const PROVIDER_CONFIG = {
 // DEFAULT SETTINGS
 // ============================================================
 // Bump this when systemPrompt changes to force-update saved settings
-const PROMPT_VERSION = 2;
+const PROMPT_VERSION = 3;
 
 const DEFAULT_SETTINGS = {
   isEnabled: true,
@@ -107,10 +107,9 @@ Output the tracker in this exact format:
 
 5. **Field Guidelines**:
    - "topics": Use one- or two-word keywords relevant to the scene. Avoid long phrases.
-   - "present": List other characters who are nearby or in the scene.
    - "state": Describe emotional and physical state, including how put-together or disheveled the character appears and any removed clothing.
    - "position": Current body position or pose.
-   - Time and weather are global (shared across all characters).
+   - Time, weather, and location are global (shared across all characters).
 
 6. **accent_color**: A hex color (e.g. "#6a5acd") representing the visual theme of the scene. Choose based on the character's personality, mood/atmosphere, and setting. Examples: warm amber (#d4763a) for cozy/romantic, cool blue (#4a90d9) for calm/ocean, deep red (#c0392b) for tense/passionate, forest green (#2d8659) for nature/outdoor, dark purple (#6a5acd) for mysterious/night. Pick ONE color that best represents the overall vibe.
 
@@ -390,6 +389,7 @@ function renderTrackerCard(data) {
     <div class="${CONTAINER_CLASS}"${inlineStyle}>
       <div class="stt-toggle-bar">
         <span class="stt-toggle-label">Scene Tracker</span>
+        <button class="stt-regenerate-btn" title="Regenerate tracker">&#8635;</button>
         <span class="stt-toggle-chevron">&#9660;</span>
       </div>
       <div class="stt-card-body">
@@ -865,7 +865,7 @@ async function readNonStreamResponse(res, format) {
   return "";
 }
 
-async function generateTrackerWithSecondaryLLM() {
+async function generateTrackerWithSecondaryLLM(targetMesId) {
   const provider = getSettings("secondaryLLMAPI");
   const model = getSettings("secondaryLLMModel");
 
@@ -883,8 +883,11 @@ async function generateTrackerWithSecondaryLLM() {
     parseFloat(getSettings("secondaryLLMTemperature")) || 0.7;
   const streaming = getSettings("secondaryLLMStreaming") !== false;
 
+  // When targeting a specific message, only consider messages up to that point
+  const chatSlice = targetMesId !== undefined ? chat.slice(0, targetMesId + 1) : chat;
+
   // Get recent messages
-  const recentMessages = chat
+  const recentMessages = chatSlice
     .filter((msg) => !msg.is_system)
     .slice(-messageCount);
 
@@ -892,9 +895,10 @@ async function generateTrackerWithSecondaryLLM() {
   const userName = context.name1 || "User";
   const charName = context.name2 || "Character";
 
-  // Find previous tracker data
+  // Find previous tracker data (search backwards from target or end)
+  const searchStart = targetMesId !== undefined ? targetMesId - 1 : chat.length - 2;
   let prevTracker = null;
-  for (let i = chat.length - 2; i >= 0; i--) {
+  for (let i = searchStart; i >= 0; i--) {
     const data = parseTrackerFromMessage(chat[i]?.mes);
     if (data) {
       prevTracker = JSON.stringify(data, null, 2);
@@ -1490,10 +1494,53 @@ function getExtensionDir() {
 function setupEventHandlers() {
   // Toggle card collapse on toggle bar click
   document.addEventListener("click", (e) => {
+    // Ignore clicks on the regenerate button
+    if (e.target.closest(".stt-regenerate-btn")) return;
     const bar = e.target.closest(".stt-toggle-bar");
     if (!bar) return;
     const card = bar.closest(`.${CONTAINER_CLASS}`);
     if (card) card.classList.toggle("stt-collapsed");
+  });
+
+  // Regenerate tracker card
+  document.addEventListener("click", async (e) => {
+    const btn = e.target.closest(".stt-regenerate-btn");
+    if (!btn) return;
+    e.stopPropagation();
+
+    const mesBlock = btn.closest("[mesid]");
+    if (!mesBlock) return;
+    const mesId = parseInt(mesBlock.getAttribute("mesid"));
+
+    btn.classList.add("stt-spinning");
+    btn.disabled = true;
+
+    try {
+      const context = getContext();
+      const trackerText = await generateTrackerWithSecondaryLLM(mesId);
+      if (!trackerText) throw new Error("No tracker data");
+
+      const msg = context.chat[mesId];
+      const identifier = getSettings("codeBlockIdentifier") || DEFAULT_SETTINGS.codeBlockIdentifier;
+      const regex = new RegExp("```" + identifier + "\\s*\\n[\\s\\S]*?```", "g");
+      const newBlock = "```" + identifier + "\n" + trackerText + "\n```";
+
+      if (regex.test(msg.mes)) {
+        msg.mes = msg.mes.replace(new RegExp("```" + identifier + "\\s*\\n[\\s\\S]*?```", "g"), newBlock);
+      } else {
+        msg.mes += "\n\n" + newBlock;
+      }
+
+      await context.saveChat();
+      renderCardInMessage(mesId);
+      hideTrackerBlocks();
+    } catch (err) {
+      console.error("[STT] Regenerate failed:", err);
+      toastr.error("Failed to regenerate tracker");
+    } finally {
+      btn.classList.remove("stt-spinning");
+      btn.disabled = false;
+    }
   });
 
   const context = getContext();
