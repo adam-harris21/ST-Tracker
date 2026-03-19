@@ -127,7 +127,7 @@ Output the tracker in this exact format:
     { key: "topics", label: "Topics", description: "SHORT_KEYWORDS" },
     { key: "present", label: "Present", description: "OTHER_CHARACTERS_NEARBY" },
     { key: "hair", label: "Hair", description: "HAIR_STYLE_AND_STATE" },
-    { key: "makeup", label: "Makeup", description: "MAKEUP_DESCRIPTION" },
+    { key: "makeup", label: "Makeup", description: "DESCRIBE_FACE_APPEARANCE_SKIN_AND_MAKEUP_IF_ANY" },
     { key: "state", label: "State", description: "EMOTIONAL_PHYSICAL_STATE_AND_DRESS_STATE" },
   ],
   globalFields: [
