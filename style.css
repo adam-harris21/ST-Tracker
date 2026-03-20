@@ -710,3 +710,10 @@
     max-width: unset;
   }
 }
+
+/* Override ST's global no-blur so tracker keeps its frosted glass */
+body.no-blur .stt-card-container,
+body.no-blur .stt-main-panel {
+  backdrop-filter: blur(40px) saturate(1.4) !important;
+  -webkit-backdrop-filter: blur(40px) saturate(1.4) !important;
+}
