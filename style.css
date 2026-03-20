@@ -126,12 +126,13 @@
   padding: 8px 10px 10px;
   max-height: 2000px;
   overflow: hidden;
-  transition: max-height 0.3s ease;
+  transition: max-height 0.3s ease, padding 0.3s ease;
 }
 
 /* Collapsed state */
 .stt-collapsed .stt-card-body {
   max-height: 0;
+  padding: 0;
 }
 
 .stt-collapsed .stt-toggle-chevron {
@@ -322,6 +323,7 @@
 
 .stt-main-panel.collapsed .stt-panel-body {
   max-height: 0;
+  padding: 0;
 }
 
 .stt-main-panel.collapsed .stt-chevron {
@@ -378,7 +380,7 @@
   gap: 14px;
   max-height: 2000px;
   overflow: hidden;
-  transition: max-height 0.3s ease;
+  transition: max-height 0.3s ease, padding 0.3s ease;
 }
 
 /* Section headers within panel */
@@ -411,12 +413,12 @@
   gap: 12px;
   max-height: 2000px;
   overflow: hidden;
-  transition: max-height 0.3s ease;
+  transition: max-height 0.3s ease, padding 0.3s ease;
 }
 
 .stt-section.collapsed .stt-section-body {
   max-height: 0;
-  padding: 0 16px;
+  padding: 0;
 }
 
 .stt-section.collapsed .stt-chevron {
