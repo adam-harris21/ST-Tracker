@@ -31,6 +31,7 @@
   -webkit-backdrop-filter: blur(40px) saturate(1.4);
   border: 1px solid color-mix(in srgb, var(--stt-accent) 12%, transparent);
   box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
     0 2px 4px rgba(0, 0, 0, 0.4),
     0 8px 32px rgba(0, 0, 0, 0.25),
     0 0 16px color-mix(in srgb, var(--stt-accent) 8%, transparent);
@@ -122,12 +123,15 @@
 
 /* Card body — inset from card edges */
 .stt-card-body {
-  padding: 4px 6px 6px;
+  padding: 8px 10px 10px;
+  max-height: 2000px;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
 }
 
 /* Collapsed state */
 .stt-collapsed .stt-card-body {
-  display: none;
+  max-height: 0;
 }
 
 .stt-collapsed .stt-toggle-chevron {
@@ -161,6 +165,9 @@
   padding: 4px 11px;
   border-radius: 20px;
   border: 1px solid color-mix(in srgb, var(--stt-accent) 10%, transparent);
+  box-shadow:
+    inset 0 1px 2px rgba(0, 0, 0, 0.15),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.06);
 }
 
 .stt-header-icon {
@@ -202,6 +209,7 @@
   border-radius: 50%;
   background: var(--stt-accent);
   flex-shrink: 0;
+  box-shadow: 0 0 6px 2px color-mix(in srgb, var(--stt-accent) 40%, transparent);
 }
 
 .stt-char-name {
@@ -220,18 +228,34 @@
 }
 
 .stt-field {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 4px;
   padding: 10px 14px;
   background: color-mix(in srgb, var(--stt-accent) 5%, rgba(0, 0, 0, 0.15));
   border: 1px solid color-mix(in srgb, var(--stt-accent) 6%, transparent);
-  border-left: 2px solid color-mix(in srgb, var(--stt-accent) 30%, transparent);
   border-radius: 14px;
   min-width: 0;
   box-shadow:
     inset 0 2px 4px rgba(0, 0, 0, 0.25),
     inset 0 -1px 0 rgba(255, 255, 255, 0.04);
+  overflow: hidden;
+}
+
+.stt-field::before {
+  content: "";
+  position: absolute;
+  top: 4px;
+  left: 0;
+  bottom: 4px;
+  width: 2px;
+  border-radius: 0 1px 1px 0;
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--stt-accent) 50%, transparent),
+    color-mix(in srgb, var(--stt-accent) 8%, transparent)
+  );
 }
 
 .stt-field-icon {
@@ -297,7 +321,7 @@
 }
 
 .stt-main-panel.collapsed .stt-panel-body {
-  display: none;
+  max-height: 0;
 }
 
 .stt-main-panel.collapsed .stt-chevron {
@@ -352,17 +376,17 @@
   display: flex;
   flex-direction: column;
   gap: 14px;
+  max-height: 2000px;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
 }
 
 /* Section headers within panel */
 .stt-section {
   border-radius: 10px;
   overflow: hidden;
-}
-
-.stt-section + .stt-section {
-  border-top: 1px solid transparent;
-  border-image: linear-gradient(90deg, transparent, color-mix(in srgb, var(--stt-accent) 12%, transparent), transparent) 1;
+  background: color-mix(in srgb, var(--stt-accent) 3%, rgba(0, 0, 0, 0.12));
+  border: 1px solid color-mix(in srgb, var(--stt-accent) 6%, transparent);
 }
 
 .stt-section-header {
@@ -385,14 +409,22 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  max-height: 2000px;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
 }
 
 .stt-section.collapsed .stt-section-body {
-  display: none;
+  max-height: 0;
+  padding: 0 16px;
 }
 
 .stt-section.collapsed .stt-chevron {
   transform: rotate(-90deg);
+}
+
+.stt-section:not(.collapsed) .stt-section-header {
+  border-bottom: 1px solid color-mix(in srgb, var(--stt-accent) 15%, transparent);
 }
 
 /* Setting rows */
@@ -401,6 +433,11 @@
   justify-content: space-between;
   align-items: flex-start;
   gap: 12px;
+}
+
+.stt-setting-row + .stt-setting-row {
+  padding-top: 12px;
+  border-top: 1px solid color-mix(in srgb, var(--stt-accent) 6%, transparent);
 }
 
 .stt-setting-info {
@@ -538,6 +575,15 @@
 .stt-input-sm { min-width: 90px; max-width: 120px; }
 .stt-input-wide { min-width: 140px; max-width: 200px; }
 .stt-select-wide { min-width: 140px; max-width: 200px; }
+
+/* Accent-themed dividers (replace hardcoded white borders in HTML) */
+.stt-field-editor-divider {
+  border-top: 1px solid color-mix(in srgb, var(--stt-accent) 8%, transparent);
+}
+
+.stt-danger-divider {
+  border-top: 1px solid color-mix(in srgb, var(--stt-accent) 8%, transparent);
+}
 
 /* ============================================================
    FIELD EDITOR
