@@ -124,8 +124,8 @@
 /* Card body — inset from card edges */
 .stt-card-body {
   padding: 8px 10px 10px;
-  max-height: 2000px;
-  overflow: hidden;
+  max-height: 300px;
+  overflow-y: auto;
   transition: max-height 0.3s ease, padding 0.3s ease;
 }
 
