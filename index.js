@@ -1622,7 +1622,6 @@ function setupEventHandlers() {
     targetEl.textContent = "";
     targetEl.appendChild(input);
     input.focus();
-    input.select();
 
     function confirm() {
       const newValue = input.value.trim();
