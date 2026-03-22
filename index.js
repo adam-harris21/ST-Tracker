@@ -328,23 +328,31 @@ function darkenColor(hex) {
   return `#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${b.toString(16).padStart(2,'0')}`;
 }
 
-function renderField(icon, label, value) {
+function renderField(icon, label, value, fieldKey = "", scope = "", charIndex = -1) {
   if (!value && value !== 0) return "";
+  let attrs = "";
+  if (fieldKey) {
+    attrs += ` data-stt-field="${escapeHtml(fieldKey)}"`;
+    attrs += ` data-stt-scope="${scope}"`;
+    if (scope === "character" && charIndex >= 0) {
+      attrs += ` data-stt-char-index="${charIndex}"`;
+    }
+  }
   return `
-    <div class="stt-field">
+    <div class="stt-field"${attrs}>
       <span class="stt-field-icon">${icon}</span>
       <span class="stt-field-label">${label}</span>
       <span class="stt-field-value">${escapeHtml(String(value))}</span>
     </div>`;
 }
 
-function renderCharacterCard(character) {
+function renderCharacterCard(character, charIndex = 0) {
   const name = character.name || "Unknown";
   const fields = getSettings("customFields") || DEFAULT_SETTINGS.customFields;
 
   let fieldsHtml = "";
   for (const field of fields) {
-    fieldsHtml += renderField("", field.label, character[field.key]);
+    fieldsHtml += renderField("", field.label, character[field.key], field.key, "character", charIndex);
   }
 
   return `
@@ -358,7 +366,7 @@ function renderCharacterCard(character) {
     </div>`;
 }
 
-function renderTrackerCard(data) {
+function renderTrackerCard(data, mesId = -1) {
   if (!data) return "";
 
   const accentColor = data.accent_color || "";
@@ -369,8 +377,10 @@ function renderTrackerCard(data) {
   // Build inline style to override accent color if the LLM provided one
   let inlineStyle = "";
   if (accentColor && /^#[0-9a-fA-F]{3,8}$/.test(accentColor)) {
-    inlineStyle = ` style="--stt-accent: ${accentColor};"`;
+    inlineStyle = `--stt-accent: ${accentColor};`;
   }
+  const styleAttr = inlineStyle ? ` style="${inlineStyle}"` : "";
+  const mesIdAttr = mesId >= 0 ? ` data-stt-mesid="${mesId}"` : "";
 
   // Build header from globalFields (skip accent_color — used for styling only)
   const globalFields = getSettings("globalFields") || DEFAULT_SETTINGS.globalFields;
@@ -379,7 +389,7 @@ function renderTrackerCard(data) {
     .map(f => {
       const HEADER_ICONS = { time: "🕐", weather: "🌤", location: "📍", season: "🍂", date: "📅" };
       const icon = HEADER_ICONS[f.key] ? `<span class="stt-header-icon">${HEADER_ICONS[f.key]}</span>` : "";
-      return `<span class="stt-header-item">${icon}${escapeHtml(f.label)}: ${escapeHtml(String(data[f.key]))}</span>`;
+      return `<span class="stt-header-item" data-stt-field="${escapeHtml(f.key)}" data-stt-scope="global">${icon}<span class="stt-header-label">${escapeHtml(f.label)}:</span> <span class="stt-header-value">${escapeHtml(String(data[f.key]))}</span></span>`;
     });
 
   let headerHtml = "";
@@ -387,10 +397,10 @@ function renderTrackerCard(data) {
     headerHtml = `<div class="stt-header">${headerItems.join("")}</div>`;
   }
 
-  const charactersHtml = characters.map(renderCharacterCard).join("");
+  const charactersHtml = characters.map((char, i) => renderCharacterCard(char, i)).join("");
 
   return `
-    <div class="${CONTAINER_CLASS}"${inlineStyle}>
+    <div class="${CONTAINER_CLASS}"${styleAttr}${mesIdAttr}>
       <div class="stt-toggle-bar">
         <span class="stt-toggle-label">Scene Tracker</span>
         ${getSettings("useSecondaryLLM") ? '<button class="stt-regenerate-btn" title="Regenerate tracker">&#8635;</button>' : ''}
@@ -428,7 +438,7 @@ function renderCardInMessage(mesId) {
   const existing = mesElement.querySelector(`.${CONTAINER_CLASS}`);
   if (existing) existing.remove();
 
-  const cardHtml = renderTrackerCard(data);
+  const cardHtml = renderTrackerCard(data, mesId);
   if (!cardHtml) return;
 
   // Insert card at the end of the message
@@ -465,6 +475,67 @@ function hideTrackerBlocks() {
       pre.style.display = "none";
     }
   });
+}
+
+// ============================================================
+// INLINE EDITING - Tap a field value to edit it directly
+// ============================================================
+async function saveInlineEdit(mesId, fieldKey, scope, charIndex, newValue) {
+  const context = getContext();
+  const msg = context.chat[mesId];
+  if (!msg) return;
+
+  const data = parseTrackerFromMessage(msg.mes);
+  if (!data) return;
+
+  // Update the data object
+  if (scope === "global") {
+    data[fieldKey] = newValue;
+  } else if (scope === "character" && charIndex >= 0 && data.characters && data.characters[charIndex]) {
+    data.characters[charIndex][fieldKey] = newValue;
+  } else {
+    return;
+  }
+
+  // Detect format from existing block (JSON or YAML) and serialize back in same format
+  const identifier = getSettings("codeBlockIdentifier") || DEFAULT_SETTINGS.codeBlockIdentifier;
+  const escapedId = escapeRegex(identifier);
+  const extractRegex = new RegExp("```" + escapedId + "\\s*([\\s\\S]*?)```", "m");
+  const rawMatch = msg.mes.match(extractRegex);
+  const isJSON = rawMatch && rawMatch[1] && rawMatch[1].trim().startsWith("{");
+
+  let trackerText;
+  if (isJSON) {
+    trackerText = JSON.stringify(data, null, 2);
+  } else {
+    trackerText = objectToSimpleYaml(data);
+  }
+
+  // Replace tracker block in message
+  const replaceRegex = new RegExp("```" + escapedId + "\\s*[\\s\\S]*?```", "g");
+  const newBlock = "```" + identifier + "\n" + trackerText + "\n```";
+
+  // Handle wrapped (hidden div) format
+  const wrappedRegex = new RegExp(
+    `<div style="display: none;">\\s*\`\`\`${escapedId}\\s*[\\s\\S]*?\`\`\`\\s*</div>`,
+    "g"
+  );
+
+  if (wrappedRegex.test(msg.mes)) {
+    msg.mes = msg.mes.replace(
+      new RegExp(`<div style="display: none;">\\s*\`\`\`${escapedId}\\s*[\\s\\S]*?\`\`\`\\s*</div>`, "g"),
+      `<div style="display: none;">${newBlock}</div>`
+    );
+  } else if (replaceRegex.test(msg.mes)) {
+    msg.mes = msg.mes.replace(
+      new RegExp("```" + escapedId + "\\s*[\\s\\S]*?```", "g"),
+      newBlock
+    );
+  }
+
+  await context.saveChat();
+  renderCardInMessage(mesId);
+  hideTrackerBlocks();
 }
 
 // ============================================================
@@ -1506,6 +1577,73 @@ function setupEventHandlers() {
     if (!bar) return;
     const card = bar.closest(`.${CONTAINER_CLASS}`);
     if (card) card.classList.toggle("stt-collapsed");
+  });
+
+  // Inline editing - tap field value to edit
+  document.addEventListener("click", (e) => {
+    // Check for character field value or header value
+    const fieldValue = e.target.closest(".stt-field-value");
+    const headerValue = e.target.closest(".stt-header-value");
+    const targetEl = fieldValue || headerValue;
+    if (!targetEl) return;
+
+    // Already editing
+    if (targetEl.querySelector(".stt-inline-input")) return;
+
+    let fieldKey, scope, charIndex;
+
+    if (fieldValue) {
+      const field = fieldValue.closest(".stt-field");
+      if (!field || !field.dataset.sttField) return;
+      fieldKey = field.dataset.sttField;
+      scope = field.dataset.sttScope;
+      charIndex = parseInt(field.dataset.sttCharIndex ?? "-1");
+    } else if (headerValue) {
+      const headerItem = headerValue.closest(".stt-header-item");
+      if (!headerItem || !headerItem.dataset.sttField) return;
+      fieldKey = headerItem.dataset.sttField;
+      scope = "global";
+      charIndex = -1;
+    }
+
+    const card = targetEl.closest(`.${CONTAINER_CLASS}`);
+    if (!card || card.dataset.sttMesid === undefined) return;
+    const mesId = parseInt(card.dataset.sttMesid);
+    if (isNaN(mesId)) return;
+
+    const currentValue = targetEl.textContent.trim();
+
+    // Create input
+    const input = document.createElement("input");
+    input.type = "text";
+    input.className = "stt-inline-input";
+    input.value = currentValue;
+
+    targetEl.textContent = "";
+    targetEl.appendChild(input);
+    input.focus();
+    input.select();
+
+    function confirm() {
+      const newValue = input.value.trim();
+      input.removeEventListener("blur", confirm);
+      if (newValue && newValue !== currentValue) {
+        saveInlineEdit(mesId, fieldKey, scope, charIndex, newValue);
+      } else {
+        targetEl.textContent = currentValue;
+      }
+    }
+
+    input.addEventListener("blur", confirm);
+    input.addEventListener("keydown", (ke) => {
+      if (ke.key === "Enter") {
+        ke.preventDefault();
+        input.blur();
+      } else if (ke.key === "Escape") {
+        input.removeEventListener("blur", confirm);
+        targetEl.textContent = currentValue;
+      }
+    });
   });
 
   // Regenerate tracker card
