@@ -1613,19 +1613,36 @@ function setupEventHandlers() {
 
     const currentValue = targetEl.textContent.trim();
 
-    // Create input
-    const input = document.createElement("input");
-    input.type = "text";
-    input.className = "stt-inline-input";
-    input.value = currentValue;
+    // Create textarea for mobile-friendly editing
+    const textarea = document.createElement("textarea");
+    textarea.className = "stt-inline-input";
+    textarea.value = currentValue;
+    textarea.rows = Math.max(2, Math.ceil(currentValue.length / 30));
 
     targetEl.textContent = "";
-    targetEl.appendChild(input);
-    input.focus();
+    targetEl.appendChild(textarea);
+    textarea.focus();
 
-    function confirm() {
-      const newValue = input.value.trim();
-      input.removeEventListener("blur", confirm);
+    // Auto-resize to fit content
+    function autoResize() {
+      textarea.style.height = "auto";
+      textarea.style.height = textarea.scrollHeight + "px";
+    }
+    textarea.addEventListener("input", autoResize);
+    setTimeout(autoResize, 0);
+
+    // Save button for mobile (no Enter key available easily)
+    const saveBtn = document.createElement("button");
+    saveBtn.className = "stt-inline-save";
+    saveBtn.textContent = "Save";
+    targetEl.appendChild(saveBtn);
+
+    let saved = false;
+
+    function doSave() {
+      if (saved) return;
+      saved = true;
+      const newValue = textarea.value.trim();
       if (newValue && newValue !== currentValue) {
         saveInlineEdit(mesId, fieldKey, scope, charIndex, newValue);
       } else {
@@ -1633,13 +1650,15 @@ function setupEventHandlers() {
       }
     }
 
-    input.addEventListener("blur", confirm);
-    input.addEventListener("keydown", (ke) => {
-      if (ke.key === "Enter") {
-        ke.preventDefault();
-        input.blur();
-      } else if (ke.key === "Escape") {
-        input.removeEventListener("blur", confirm);
+    saveBtn.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      doSave();
+    });
+
+    textarea.addEventListener("keydown", (ke) => {
+      if (ke.key === "Escape") {
+        saved = true;
         targetEl.textContent = currentValue;
       }
     });
