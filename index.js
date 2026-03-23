@@ -1747,6 +1747,10 @@ function setupEventHandlers() {
 
     // When chat is changed
     eventSource.on(eventTypes.CHAT_CHANGED, () => {
+      // Clear stale data from previous chat so {{stt_last}} doesn't leak
+      lastRenderedMessageId = null;
+      lastTrackerData = null;
+
       if (!getSettings("isEnabled")) return;
       log("Chat changed - refreshing all cards");
       setTimeout(() => {
