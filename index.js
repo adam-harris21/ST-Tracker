@@ -319,15 +319,6 @@ function escapeHtml(str) {
     .replace(/"/g, "&quot;");
 }
 
-function darkenColor(hex) {
-  hex = hex.replace('#', '');
-  if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
-  const r = Math.round(parseInt(hex.substring(0, 2), 16) * 0.7);
-  const g = Math.round(parseInt(hex.substring(2, 4), 16) * 0.7);
-  const b = Math.round(parseInt(hex.substring(4, 6), 16) * 0.7);
-  return `#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${b.toString(16).padStart(2,'0')}`;
-}
-
 function renderField(icon, label, value, fieldKey = "", scope = "", charIndex = -1) {
   if (!value && value !== 0) return "";
   let attrs = "";
@@ -399,10 +390,28 @@ function renderTrackerCard(data, mesId = -1) {
 
   const charactersHtml = characters.map((char, i) => renderCharacterCard(char, i)).join("");
 
+  // Build a brief summary for the toggle bar (visible when collapsed)
+  let toggleSummary = "";
+  const summaryParts = [];
+  if (data.time) {
+    // Extract just the time portion (e.g. "3:00 PM" from "15:00:00; 03/24/2026 (Monday)")
+    const timePart = String(data.time).split(";")[0].trim();
+    summaryParts.push(timePart);
+  }
+  if (data.location) {
+    // Take first meaningful part of location (before first comma)
+    const locPart = String(data.location).split(",")[0].trim();
+    summaryParts.push(locPart);
+  }
+  if (summaryParts.length > 0) {
+    toggleSummary = `<span class="stt-toggle-summary">${escapeHtml(summaryParts.join(" · "))}</span>`;
+  }
+
   return `
     <div class="${CONTAINER_CLASS}"${styleAttr}${mesIdAttr}>
       <div class="stt-toggle-bar">
         <span class="stt-toggle-label">Scene Tracker</span>
+        ${toggleSummary}
         ${getSettings("useSecondaryLLM") ? '<button class="stt-regenerate-btn" title="Regenerate tracker">&#8635;</button>' : ''}
         <span class="stt-toggle-chevron">&#9660;</span>
       </div>
@@ -1169,7 +1178,20 @@ function registerSlashCommands() {
     })
   );
 
-  log("Slash commands registered: /stt-refresh, /stt-toggle");
+  SlashCommandParser.addCommandObject(
+    SlashCommand.fromProps({
+      name: "stt-collapse-all",
+      callback: async () => {
+        document.querySelectorAll(`.${CONTAINER_CLASS}`).forEach(card => {
+          card.classList.add("stt-collapsed");
+        });
+        return "All tracker cards collapsed.";
+      },
+      helpString: "Collapse all tracker cards in the current chat.",
+    })
+  );
+
+  log("Slash commands registered: /stt-refresh, /stt-toggle, /stt-collapse-all");
 }
 
 // ============================================================
@@ -1631,17 +1653,27 @@ function setupEventHandlers() {
     textarea.addEventListener("input", autoResize);
     setTimeout(autoResize, 0);
 
-    // Save button for mobile (no Enter key available easily)
+    // Save and Cancel buttons for mobile
+    const btnRow = document.createElement("div");
+    btnRow.className = "stt-inline-btn-row";
+
+    const cancelBtn = document.createElement("button");
+    cancelBtn.className = "stt-inline-cancel";
+    cancelBtn.textContent = "Cancel";
+    btnRow.appendChild(cancelBtn);
+
     const saveBtn = document.createElement("button");
     saveBtn.className = "stt-inline-save";
     saveBtn.textContent = "Save";
-    targetEl.appendChild(saveBtn);
+    btnRow.appendChild(saveBtn);
 
-    let saved = false;
+    targetEl.appendChild(btnRow);
+
+    let done = false;
 
     function doSave() {
-      if (saved) return;
-      saved = true;
+      if (done) return;
+      done = true;
       const newValue = textarea.value.trim();
       if (newValue && newValue !== currentValue) {
         saveInlineEdit(mesId, fieldKey, scope, charIndex, newValue);
@@ -1650,17 +1682,29 @@ function setupEventHandlers() {
       }
     }
 
+    function doCancel() {
+      if (done) return;
+      done = true;
+      targetEl.textContent = currentValue;
+    }
+
     saveBtn.addEventListener("click", (ev) => {
       ev.preventDefault();
       ev.stopPropagation();
       doSave();
     });
 
-    textarea.addEventListener("keydown", (ke) => {
-      if (ke.key === "Escape") {
-        saved = true;
-        targetEl.textContent = currentValue;
-      }
+    cancelBtn.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      doCancel();
+    });
+
+    // Tap outside to dismiss (small delay so button clicks register first)
+    textarea.addEventListener("blur", () => {
+      setTimeout(() => {
+        if (!done) doCancel();
+      }, 200);
     });
   });
 
@@ -1773,11 +1817,13 @@ function setupEventHandlers() {
       // Check if secondary LLM should generate tracker
       if (getSettings("useSecondaryLLM")) {
         const context = getContext();
-        const lastMsg = context.chat[context.chat.length - 1];
+        // Capture target message ID BEFORE the async call to avoid race conditions
+        const targetMesId = context.chat.length - 1;
+        const targetMsg = context.chat[targetMesId];
 
         // Only generate if the last message doesn't already have tracker data
-        if (lastMsg && !lastMsg.is_user) {
-          const existing = parseTrackerFromMessage(lastMsg.mes);
+        if (targetMsg && !targetMsg.is_user) {
+          const existing = parseTrackerFromMessage(targetMsg.mes);
           if (!existing) {
             log("No tracker in message, using secondary LLM...");
             const trackerJson = await generateTrackerWithSecondaryLLM();
@@ -1796,13 +1842,12 @@ function setupEventHandlers() {
                 const identifier = getSettings("codeBlockIdentifier");
                 const trackerBlock = `\n\n\`\`\`${identifier}\n${trackerJson}\n\`\`\``;
 
-                // Append to the last message
-                const lastMesId = context.chat.length - 1;
-                context.chat[lastMesId].mes += trackerBlock;
+                // Append to the captured target message (not whatever is last now)
+                context.chat[targetMesId].mes += trackerBlock;
 
                 // Save and re-render
                 await context.saveChat();
-                renderCardInMessage(lastMesId);
+                renderCardInMessage(targetMesId);
                 hideTrackerBlocks();
 
                 log("Secondary LLM tracker appended to message");

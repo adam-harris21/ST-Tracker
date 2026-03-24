@@ -80,6 +80,19 @@
   text-transform: uppercase;
   letter-spacing: 1.2px;
   color: var(--stt-accent);
+  flex-shrink: 0;
+}
+
+.stt-toggle-summary {
+  font-size: 0.6em;
+  color: rgba(255, 255, 255, 0.4);
+  font-weight: 400;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+  margin: 0 8px;
 }
 
 .stt-toggle-chevron {
@@ -127,12 +140,27 @@
   max-height: 300px;
   overflow-y: auto;
   transition: max-height 0.3s ease, padding 0.3s ease;
+  position: relative;
+}
+
+.stt-card-body::-webkit-scrollbar {
+  width: 4px;
+}
+
+.stt-card-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.stt-card-body::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--stt-accent) 40%, transparent);
+  border-radius: 2px;
 }
 
 /* Collapsed state */
 .stt-collapsed .stt-card-body {
   max-height: 0;
   padding: 0;
+  overflow: hidden;
 }
 
 .stt-collapsed .stt-toggle-chevron {
@@ -211,7 +239,8 @@
 
 .stt-character-card + .stt-character-card {
   border-top: 1px solid transparent;
-  border-image: linear-gradient(90deg, transparent, color-mix(in srgb, var(--stt-accent) 12%, transparent), transparent) 1;
+  border-image: linear-gradient(90deg, transparent, color-mix(in srgb, var(--stt-accent) 22%, transparent), transparent) 1;
+  margin-top: 2px;
 }
 
 /* Character name */
@@ -756,12 +785,15 @@ body.no-blur .stt-main-panel {
   overflow: hidden;
 }
 
-.stt-inline-save {
-  display: block;
+.stt-inline-btn-row {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
   margin-top: 6px;
-  margin-left: auto;
-  background: var(--stt-accent);
-  color: #fff;
+}
+
+.stt-inline-save,
+.stt-inline-cancel {
   border: none;
   border-radius: 6px;
   padding: 6px 18px;
@@ -769,9 +801,19 @@ body.no-blur .stt-main-panel {
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
+  color: #fff;
 }
 
-.stt-inline-save:active {
+.stt-inline-save {
+  background: var(--stt-accent);
+}
+
+.stt-inline-cancel {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.stt-inline-save:active,
+.stt-inline-cancel:active {
   opacity: 0.7;
 }
 
