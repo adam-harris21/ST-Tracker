@@ -403,6 +403,9 @@ function renderTrackerCard(data, mesId = -1) {
     const locPart = String(data.location).split(",")[0].trim();
     summaryParts.push(locPart);
   }
+  if (characters.length > 0) {
+    summaryParts.push(`${characters.length} char${characters.length !== 1 ? "s" : ""}`);
+  }
   if (summaryParts.length > 0) {
     toggleSummary = `<span class="stt-toggle-summary">${escapeHtml(summaryParts.join(" · "))}</span>`;
   }
@@ -464,6 +467,16 @@ function refreshAllCards() {
   const start = Math.max(0, context.chat.length - 50);
   for (let i = start; i < context.chat.length; i++) {
     renderCardInMessage(i);
+  }
+
+  // Auto-collapse all cards except the most recent one
+  const allCards = document.querySelectorAll(`.${CONTAINER_CLASS}`);
+  if (allCards.length > 1) {
+    allCards.forEach((card, index) => {
+      if (index < allCards.length - 1) {
+        card.classList.add("stt-collapsed");
+      }
+    });
   }
 }
 
@@ -1598,21 +1611,41 @@ function setupEventHandlers() {
     const bar = e.target.closest(".stt-toggle-bar");
     if (!bar) return;
     const card = bar.closest(`.${CONTAINER_CLASS}`);
-    if (card) card.classList.toggle("stt-collapsed");
+    if (!card) return;
+
+    const body = card.querySelector(".stt-card-body");
+    if (card.classList.contains("stt-collapsed")) {
+      // Expanding: set max-height to actual content height for smooth animation
+      card.classList.remove("stt-collapsed");
+      if (body) {
+        body.style.maxHeight = body.scrollHeight + "px";
+        body.addEventListener("transitionend", () => {
+          body.style.maxHeight = "";
+        }, { once: true });
+      }
+    } else {
+      // Collapsing: snapshot current height, then collapse
+      if (body) {
+        body.style.maxHeight = body.scrollHeight + "px";
+        body.offsetHeight; // force reflow
+        body.style.maxHeight = "";
+      }
+      card.classList.add("stt-collapsed");
+    }
   });
 
-  // Inline editing - tap field value to edit
-  document.addEventListener("click", (e) => {
-    // Check for character field value or header value
-    const fieldValue = e.target.closest(".stt-field-value");
-    const headerValue = e.target.closest(".stt-header-value");
-    const targetEl = fieldValue || headerValue;
-    if (!targetEl) return;
+  // Inline editing - long-press field value to edit (prevents accidental edits)
+  let longPressTimer = null;
+  let longPressTarget = null;
 
+  function openInlineEditor(targetEl) {
     // Already editing
     if (targetEl.querySelector(".stt-inline-input")) return;
 
     let fieldKey, scope, charIndex;
+
+    const fieldValue = targetEl.closest(".stt-field-value") ? targetEl : null;
+    const headerValue = targetEl.closest(".stt-header-value") ? targetEl : null;
 
     if (fieldValue) {
       const field = fieldValue.closest(".stt-field");
@@ -1626,6 +1659,8 @@ function setupEventHandlers() {
       fieldKey = headerItem.dataset.sttField;
       scope = "global";
       charIndex = -1;
+    } else {
+      return;
     }
 
     const card = targetEl.closest(`.${CONTAINER_CLASS}`);
@@ -1706,6 +1741,34 @@ function setupEventHandlers() {
         if (!done) doCancel();
       }, 200);
     });
+  }
+
+  document.addEventListener("pointerdown", (e) => {
+    const fieldValue = e.target.closest(".stt-field-value");
+    const headerValue = e.target.closest(".stt-header-value");
+    const targetEl = fieldValue || headerValue;
+    if (!targetEl) return;
+    if (targetEl.querySelector(".stt-inline-input")) return;
+
+    longPressTarget = targetEl;
+    targetEl.classList.add("stt-pressing");
+    longPressTimer = setTimeout(() => {
+      targetEl.classList.remove("stt-pressing");
+      openInlineEditor(targetEl);
+      longPressTarget = null;
+    }, 500);
+  });
+
+  document.addEventListener("pointerup", () => {
+    clearTimeout(longPressTimer);
+    if (longPressTarget) longPressTarget.classList.remove("stt-pressing");
+    longPressTarget = null;
+  });
+
+  document.addEventListener("pointercancel", () => {
+    clearTimeout(longPressTimer);
+    if (longPressTarget) longPressTarget.classList.remove("stt-pressing");
+    longPressTarget = null;
   });
 
   // Regenerate tracker card

@@ -139,7 +139,7 @@
   padding: 8px 10px 10px;
   max-height: 300px;
   overflow-y: auto;
-  transition: max-height 0.3s ease, padding 0.3s ease;
+  transition: max-height 0.25s cubic-bezier(0.4, 0, 0.2, 1), padding 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
 }
 
@@ -156,11 +156,33 @@
   border-radius: 2px;
 }
 
+/* Scroll fade at bottom of card body */
+.stt-card-body::after {
+  content: "";
+  position: sticky;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 24px;
+  display: block;
+  background: linear-gradient(
+    to top,
+    color-mix(in srgb, var(--stt-accent) 7%, rgba(14, 14, 18, 0.94)),
+    transparent
+  );
+  pointer-events: none;
+  z-index: 2;
+}
+
 /* Collapsed state */
 .stt-collapsed .stt-card-body {
   max-height: 0;
   padding: 0;
   overflow: hidden;
+}
+
+.stt-collapsed .stt-card-body::after {
+  display: none;
 }
 
 .stt-collapsed .stt-toggle-chevron {
@@ -239,8 +261,9 @@
 
 .stt-character-card + .stt-character-card {
   border-top: 1px solid transparent;
-  border-image: linear-gradient(90deg, transparent, color-mix(in srgb, var(--stt-accent) 22%, transparent), transparent) 1;
-  margin-top: 2px;
+  border-image: linear-gradient(90deg, transparent, color-mix(in srgb, var(--stt-accent) 30%, transparent), transparent) 1;
+  margin-top: 6px;
+  padding-top: 14px;
 }
 
 /* Character name */
@@ -759,6 +782,13 @@
   }
 }
 
+/* Single column fields on narrow phones */
+@media (max-width: 420px) {
+  .stt-char-fields {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Override ST's global no-blur so tracker keeps its frosted glass */
 body.no-blur .stt-card-container,
 body.no-blur .stt-main-panel {
@@ -788,22 +818,23 @@ body.no-blur .stt-main-panel {
 .stt-inline-btn-row {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
-  margin-top: 6px;
+  gap: 12px;
+  margin-top: 10px;
 }
 
 .stt-inline-save,
 .stt-inline-cancel {
   border: none;
-  border-radius: 6px;
-  padding: 6px 18px;
-  font-size: 0.78em;
+  border-radius: 10px;
+  padding: 10px 24px;
+  font-size: 0.85em;
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
   color: #fff;
   white-space: nowrap;
   flex-shrink: 0;
+  min-height: 44px;
 }
 
 .stt-inline-save {
@@ -819,16 +850,34 @@ body.no-blur .stt-main-panel {
   opacity: 0.7;
 }
 
-/* Tap feedback for editable values */
+/* Long-press feedback for editable values */
 .stt-field-value,
 .stt-header-value {
-  cursor: text;
+  cursor: default;
   border-radius: 4px;
   padding: 1px 3px;
   margin: -1px -3px;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
 }
 
-.stt-field-value:active,
-.stt-header-value:active {
-  background: color-mix(in srgb, var(--stt-accent) 15%, transparent);
+/* Glow animation while holding finger down */
+@keyframes stt-press-fill {
+  from { background: transparent; }
+  to   { background: color-mix(in srgb, var(--stt-accent) 18%, transparent); }
+}
+
+.stt-pressing {
+  animation: stt-press-fill 0.5s ease forwards;
+  border-radius: 6px;
+}
+
+/* Prevent double-tap zoom on interactive elements */
+.stt-toggle-bar,
+.stt-regenerate-btn,
+.stt-inline-save,
+.stt-inline-cancel {
+  touch-action: manipulation;
 }
