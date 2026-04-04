@@ -156,33 +156,11 @@
   border-radius: 2px;
 }
 
-/* Scroll fade at bottom of card body */
-.stt-card-body::after {
-  content: "";
-  position: sticky;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 24px;
-  display: block;
-  background: linear-gradient(
-    to top,
-    color-mix(in srgb, var(--stt-accent) 7%, rgba(14, 14, 18, 0.94)),
-    transparent
-  );
-  pointer-events: none;
-  z-index: 2;
-}
-
 /* Collapsed state */
 .stt-collapsed .stt-card-body {
   max-height: 0;
   padding: 0;
   overflow: hidden;
-}
-
-.stt-collapsed .stt-card-body::after {
-  display: none;
 }
 
 .stt-collapsed .stt-toggle-chevron {
