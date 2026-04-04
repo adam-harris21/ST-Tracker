@@ -802,6 +802,8 @@ body.no-blur .stt-main-panel {
   font-family: inherit;
   cursor: pointer;
   color: #fff;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .stt-inline-save {
