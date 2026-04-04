@@ -1611,27 +1611,7 @@ function setupEventHandlers() {
     const bar = e.target.closest(".stt-toggle-bar");
     if (!bar) return;
     const card = bar.closest(`.${CONTAINER_CLASS}`);
-    if (!card) return;
-
-    const body = card.querySelector(".stt-card-body");
-    if (card.classList.contains("stt-collapsed")) {
-      // Expanding: set max-height to actual content height for smooth animation
-      card.classList.remove("stt-collapsed");
-      if (body) {
-        body.style.maxHeight = body.scrollHeight + "px";
-        body.addEventListener("transitionend", () => {
-          body.style.maxHeight = "";
-        }, { once: true });
-      }
-    } else {
-      // Collapsing: snapshot current height, then collapse
-      if (body) {
-        body.style.maxHeight = body.scrollHeight + "px";
-        body.offsetHeight; // force reflow
-        body.style.maxHeight = "";
-      }
-      card.classList.add("stt-collapsed");
-    }
+    if (card) card.classList.toggle("stt-collapsed");
   });
 
   // Inline editing - long-press field value to edit (prevents accidental edits)

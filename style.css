@@ -139,7 +139,7 @@
   padding: 8px 10px 10px;
   max-height: 300px;
   overflow-y: auto;
-  transition: max-height 0.25s cubic-bezier(0.4, 0, 0.2, 1), padding 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: max-height 0.3s ease, padding 0.3s ease;
   position: relative;
 }
 
